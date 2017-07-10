@@ -69,7 +69,7 @@
         	through this property in the form below, where hosts are separated by a double
         	semicolon( ";;"), host services are separated by " " and host is separated by its
         	services with ":" e.g.
-		path:Spark SparkWorker PostgreSQL Mysql HIVE;;
+			path:Spark SparkWorker PostgreSQL Mysql HIVE;;
         	master:SparkWorker;;
         	slave1:SparkWorker;;
         	slave2:SparkWorker
@@ -210,5 +210,5 @@
       none
     </description>
   </property>
-  <!-- THAT WERE ALL IReS PROPERTIES -->
+  <!-- IReS PROPERTIES ENDED-->
 </configuration>

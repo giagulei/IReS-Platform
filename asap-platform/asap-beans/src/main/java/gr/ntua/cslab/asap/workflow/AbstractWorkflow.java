@@ -25,6 +25,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -282,8 +283,20 @@ public class AbstractWorkflow {
 		System.out.println(optDataset.datasetName+" cost: "+optCost);*/
 		return ret;
 	}
-	
 
+	/**
+	 * Workflow planning with multiObjective optimization
+	 * NSGA-II algorithm.
+	 * @param target
+	 * @return
+	 */
+	public Workflow multiObjOptimization(Dataset target){
+		Workflow w = getWorkflow(target);
+		for(Entry<Operator, List<Dataset>> e : w.operatorDag.entrySet()){
+			System.out.println("Op: "+e.getKey().opName+" "+e.getValue().toString());
+		}
+		return w;
+	}
 
 	public void writeToDir(String directory) throws IOException {
         File workflowDir = new File(directory);
@@ -362,7 +375,8 @@ public class AbstractWorkflow {
 		abstractOp.add("Constraints.Input0.DataInfo.Attributes.number","2");
 		abstractOp.add("Constraints.Input1.DataInfo.Attributes.number","2");
 		abstractOp.add("Constraints.Output0.DataInfo.Attributes.number","2");
-		abstractOp.addRegex(new NodeName("Constraints.OpSpecification.Algorithm.Join", new NodeName(".*", null, true), false), ".*");
+		abstractOp.addRegex(new NodeName("Constraints.OpSpecification.Algorithm.Join",
+				new NodeName(".*", null, true), false), ".*");
 
 		//abstractOp.writeToPropertiesFile(abstractOp.opName);
 
@@ -371,7 +385,8 @@ public class AbstractWorkflow {
 		abstractOp1.add("Constraints.Output.number","1");
 		abstractOp1.add("Constraints.Input0.DataInfo.Attributes.number","2");
 		abstractOp1.add("Constraints.Output0.DataInfo.Attributes.number","2");
-		abstractOp1.addRegex(new NodeName("Constraints.OpSpecification.Algorithm.Sort", new NodeName(".*", null, true), false), ".*");
+		abstractOp1.addRegex(new NodeName("Constraints.OpSpecification.Algorithm.Sort",
+				new NodeName(".*", null, true), false), ".*");
 
 		//abstractOp1.writeToPropertiesFile(abstractOp1.opName);
 		
@@ -389,17 +404,19 @@ public class AbstractWorkflow {
 		System.out.println(abstractWorkflow);
 		
 		
-		abstractWorkflow.writeToDir("asapLibrary/workflows/workflow1");
+		//abstractWorkflow.writeToDir("asapLibrary/workflows/workflow1");
 		
-		
-		
+		abstractWorkflow.multiObjOptimization(d4);
+		System.out.println();
+		System.out.println();
+		System.out.println();
 		//Workflow workflow = abstractWorkflow.getWorkflow(d4);
 		//workflow.writeToDir("asapLibrary/workflows/matwork");
 		
 		//System.out.print(d4.datasetName+"=");
 		Workflow workflow1 = abstractWorkflow.optimizeWorkflow(d4);
 		System.out.println(workflow1);
-		workflow1.writeToDir("asapLibrary/workflows/matwork");
+		//workflow1.writeToDir("asapLibrary/workflows/matwork");
 		//System.out.println();
 		//System.out.println(workflow1);
 	}

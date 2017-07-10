@@ -39,6 +39,8 @@ public class ClusterStatusLibrary {
 		status.put("MapReduce", true);
 		status.put( "MLLib", true);
 		status.put( "Python", true);
+		status.put( "HIVE", true);
+		status.put( "PostgreSQL", true);
 		ClusterStatusLibrary.cluster_static_resources = new ConcurrentHashMap< String, String>();
 		ClusterStatusLibrary.cluster_available_resources = new ConcurrentHashMap< String, String>();
 	}
@@ -61,7 +63,6 @@ public class ClusterStatusLibrary {
 		else
 			return ret;
 	}
-	
     
     @GET
     @Produces(MediaType.TEXT_HTML)

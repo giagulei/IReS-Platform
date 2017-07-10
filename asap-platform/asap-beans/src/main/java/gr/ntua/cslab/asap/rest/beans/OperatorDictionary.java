@@ -20,6 +20,7 @@ package gr.ntua.cslab.asap.rest.beans;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,7 +36,7 @@ public class OperatorDictionary {
 	private static final Log logger = LogFactory.getLog( OperatorDictionary.class);
 
 	private String name, cost, execTime, status, isOperator, isAbstract, description, abstractName;
-	private boolean isTarget;
+	private boolean isTarget, isReplanned;
 	private List<String> input, output;
 
 	public OperatorDictionary() {
@@ -53,10 +54,11 @@ public class OperatorDictionary {
 		this.isAbstract = isAbstract;
 		this.description = description;
 		this.isTarget = isTarget;
+		this.isReplanned = false;
 		input = new ArrayList<String>();
 		output = new ArrayList<String>();
 	}
-
+	
 	public String getExecTime() {
 		return execTime;
 	}
@@ -73,6 +75,14 @@ public class OperatorDictionary {
 		return isTarget;
 	}
 
+	public boolean isReplanned(){
+		return isReplanned;
+	}
+	
+	public void setReplanned(boolean isReplanned) {
+		this.isReplanned = isReplanned;
+	}
+	
 	public void setTarget(boolean isTarget) {
 		this.isTarget = isTarget;
 	}
@@ -153,35 +163,52 @@ public class OperatorDictionary {
 		this.abstractName = abstractName;
 	}
 
-	/*vpapa: retrieve the engine where the operator will run and for which it is written for
-	*/
-	public String getEngine(){
+	/**
+	 * Returns the value of the specified property from operator's description
+	 * 
+	 * @author Vassilis Papaioannou
+	 * @param property the property for which the value will returned
+	 */
+	public String getPropertyValue( String property){
 		String description = null;
-		String engine = null;
-		int engine_index = 0;
+		String value = null;
+		int value_index = 0;
+		File f = null;
 
 		description = this.getDescription();
-		//to ensure that the property "Constraints.Engine=OperatorEngine" will be
-		//at this format and not any else like "Constraints.Engine = OperatorEngine"
+		//to ensure that the property "property" will have the format "PropertyName=PropertyValue"
+		//and not anything else like "PropertyName = PropertyValue"
         description = description.replaceAll( " ", "" );
         //in case description comes in an html format
         description = description.replaceAll( "<br>", "\n" );
-        logger.info( "Description\n\n" + description);
-		engine_index = description.indexOf( "Constraints.Engine=");
-		logger.info( "Engine index " + engine_index);
-		if( engine_index == -1){
-			//logger.info( "Operator " + name + "has not any engine specified.");
+        //logger.info( "Description\n\n" + description);
+		value_index = description.indexOf( property + "=");
+		//logger.info( "Value index " + value_index);
+		if( value_index == -1){
+			if( property.equalsIgnoreCase( "Execution.LuaScript")){
+				//in case this property is missing then it is assumed that the corresponding .lua file
+				//has the same name as the operator. However, the operator name may have been changed by
+				//IReS during materialization which adds a "_operator_index_number" part.\
+				value = this.getName() + ".lua";
+				f = new File( value);
+				if( !f.exists()){
+					value_index = this.getName().lastIndexOf("_");
+					value = this.getName().substring( 0, value_index) + ".lua";	
+				}
+				return value;
+			}
+			logger.info( "Operator " + name + " has not any property called " + property + ".");
+			logger.info( "If you are sure that this property exists, have you provided it with the correct spelling?");
 			return null;
 		}
-		//engine = Constraints.Engine=OperatorEngine
-		engine = description.substring( engine_index, description.indexOf( "\n", engine_index));
+		//value = PropertyName=PropertyValue
+		value = description.substring( value_index, description.indexOf( "\n", value_index));
         //System.out.println( "Engine " + engine);
 		//engine=OperatorEngine
-		engine = engine.split( "=")[ 1].trim();
-        //System.out.println( "Engine " + engine);
-		logger.info( "Operator " + name + " has " + engine + " as specified engine.");
+		value = value.split( "=")[ 1].trim();
+        //System.out.println( "Property " + property + " has value " + value);
+		logger.info( "Operator " + name + " for property " + property + " has value " + value);
 
-		return engine;
+		return value;
 	}
-
 }

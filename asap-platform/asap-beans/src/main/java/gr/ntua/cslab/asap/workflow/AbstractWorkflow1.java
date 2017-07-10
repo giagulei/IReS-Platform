@@ -47,21 +47,20 @@ import gr.ntua.cslab.asap.operators.NodeName;
 import gr.ntua.cslab.asap.operators.Operator;
 import gr.ntua.cslab.asap.rest.beans.OperatorDictionary;
 import gr.ntua.cslab.asap.rest.beans.WorkflowDictionary;
-import org.apache.commons.io.FileUtils;
 
 public class AbstractWorkflow1 {
-	private List<WorkflowNode> targets;
+	protected List<WorkflowNode> targets;
 	private List<WorkflowNode> abstractInputs;
 	public HashMap<String,WorkflowNode> workflowNodes;
 	public String name, directory;
 	private static Logger logger = Logger.getLogger(AbstractWorkflow1.class.getName());
 
-	private HashMap<String, WorkflowNode> materializedDatasets;
+	private HashMap<String, WorkflowNode> materilizedDatasets;
 	public HashMap<String,String> groupInputs;
 	public String optimizationFunction;
 	public String functionTarget;
-	private String policy;
-	private int count;
+	protected String policy;
+	protected int count;
 
 	@Override
 	public String toString() {
@@ -73,7 +72,7 @@ public class AbstractWorkflow1 {
 		this.name=name;
 		targets = new ArrayList<WorkflowNode>();
 		workflowNodes = new HashMap<String, WorkflowNode>();
-		materializedDatasets = new HashMap<String, WorkflowNode>();
+		materilizedDatasets = new HashMap<String, WorkflowNode>();
 	}
 
 	public AbstractWorkflow1(String name, String directory) {
@@ -99,10 +98,10 @@ public class AbstractWorkflow1 {
 		OperatorLibrary.moveid=0;
 		parsePolicy(policy);
 		String fullName=name+"_"+nameExtention;
-		MaterializedWorkflow1 materializedWorkflow = new MaterializedWorkflow1(fullName, MaterializedWorkflowLibrary.getWorkflowDirectory()+"/"+fullName);
+		MObjMaterializedWorkflow materializedWorkflow = new MObjMaterializedWorkflow(fullName, MaterializedWorkflowLibrary.getWorkflowDirectory()+"/"+fullName);
 		materializedWorkflow.count = this.count;
-		if(materializedDatasets!=null)
-			materializedWorkflow.materilizedDatasets=materializedDatasets;
+		if(materilizedDatasets!=null)
+			materializedWorkflow.materilizedDatasets=materilizedDatasets;
 		else
 			materializedWorkflow.materilizedDatasets=new HashMap<>();
 		materializedWorkflow.setAbstractWorkflow(this);
@@ -172,19 +171,16 @@ public class AbstractWorkflow1 {
 	}// end of AbstractWorkflow1 materialize
 
 
-	public MaterializedWorkflow1 replan(
-			HashMap<String, WorkflowNode> materilizedDatasets, int count) throws Exception {
-		this.materializedDatasets=materilizedDatasets;
+	public MaterializedWorkflow1 replan( HashMap<String, WorkflowNode> materilizedDatasets, int count) throws Exception {
+		this.materilizedDatasets=materilizedDatasets;
 		this.count =count;
 		MaterializedWorkflow1 ret = materialize("", policy);
-		this.materializedDatasets=null;
+		this.materilizedDatasets=null;
 		this.count = 0;
 		return ret;
 	}
 
-
-
-	public String parsePolicy(String policy) {
+	private String parsePolicy(String policy) {
 		this.policy=policy;
 		groupInputs = new HashMap<String, String>();
 		String[] p = policy.split("\n");
@@ -247,9 +243,6 @@ public class AbstractWorkflow1 {
 		graphWritter.close();
 	}
 
-	public void deleteDir() throws IOException {
-		FileUtils.deleteDirectory(new File(this.directory));
-	}
 
 	public void readFromDir(String directory) throws IOException {
 		HashMap<String,WorkflowNode> nodes = new HashMap<String, WorkflowNode>();
@@ -416,10 +409,6 @@ public class AbstractWorkflow1 {
 		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
 
 		String line = null;
-		for(WorkflowNode n : workflowNodes.values()){
-			n.inputs = new ArrayList<>();
-			n.outputs = new ArrayList<>();
-		}
 		while ((line = br.readLine()) != null) {
 			String[] e =line.split(",");
 			if(e[1].equals("$$target")){
@@ -501,21 +490,14 @@ public class AbstractWorkflow1 {
 			and note them with a "MISSING" statement
 			TODO
 		*/
-		
-		HashMap<String,OperatorDictionary> operators = new HashMap<>();
-		
 		for(WorkflowNode n : workflowNodes.values()){
 			OperatorDictionary op = new OperatorDictionary(n.getAbstractName(), n.toStringNorecursive(), n.getCost()+"", n.getExecTime()+"",
 	    			n.getStatus(new HashMap<String, List<WorkflowNode>>()), n.isOperator+"", n.isAbstract+"", n.toKeyValueString(delimiter), targets.contains(n));
-			
-			operators.put(n.toStringNorecursive(), op);
-	    	ret.addOperator(op);
-		}
-		for(WorkflowNode n : workflowNodes.values()){
+
 			for(WorkflowNode in : n.inputs){
-				operators.get(n.toStringNorecursive()).addInput(in.toStringNorecursive());
-				operators.get(in.toStringNorecursive()).addOutput(n.toStringNorecursive());
+				op.addInput(in.toStringNorecursive());
 			}
+	    	ret.addOperator(op);
 		}
 		return ret;
 	}

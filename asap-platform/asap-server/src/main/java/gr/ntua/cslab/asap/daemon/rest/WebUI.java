@@ -19,6 +19,7 @@ package gr.ntua.cslab.asap.daemon.rest;
 
 import gr.ntua.cslab.asap.daemon.AbstractWorkflowLibrary;
 import gr.ntua.cslab.asap.daemon.Main;
+import gr.ntua.cslab.asap.daemon.ClusterNodes;
 import gr.ntua.cslab.asap.daemon.RunningWorkflowLibrary;
 import gr.ntua.cslab.asap.operators.Operator;
 import gr.ntua.cslab.asap.staticLibraries.AbstractOperatorLibrary;
@@ -44,6 +45,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.log4j.Logger;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
 
 @Path("/web/")
@@ -78,15 +80,8 @@ public class WebUI {
     public String listAbstractOperators() throws IOException {
     	String ret = header;
     	List<String> l = AbstractOperatorLibrary.getOperators();
-    	Collections.sort( l, String.CASE_INSENSITIVE_ORDER);
     	ret+= "<h2>Abstract Operators</h2>";
-    	ret += "<ul>";
-    	for(String op : l){
-			ret+= "<li><a href=\"/web/abstractOperators/"+op+"\">"+op+"</a></li>";
-    		
-    	}
-    	ret+="</ul>";
-
+    	ret += display( l, "abstractOperators");
     	ret+="<div><h2>Add operator:</h2>"
     		+ "<form action=\"/web/abstractOperators/addOperator\" method=\"get\">"
 			+ "Operator name: <input type=\"text\" name=\"opname\"><br>"
@@ -128,7 +123,6 @@ public class WebUI {
         return ret;
     }
 
-
     @GET
     @Path("/abstractOperators/checkMatches/")
     @Produces(MediaType.TEXT_HTML)
@@ -156,13 +150,7 @@ public class WebUI {
     	AbstractOperatorLibrary.addOperator(opname, opString);
     	List<String> l = AbstractOperatorLibrary.getOperators();
     	ret+= "<h2>Abstract Operators</h2>";
-    	ret += "<ul>";
-    	for(String op : l){
-			ret+= "<li><a href=\"/web/abstractOperators/"+op+"\">"+op+"</a></li>";
-    		
-    	}
-    	ret+="</ul>";
-
+    	ret += display( l, "abstractOperators");
     	ret+="<div><form action=\"/web/abstractOperators/addOperator\" method=\"get\">"
 			+ "Operator name: <input type=\"text\" name=\"opname\"><br>"
 			+ "<textarea rows=\"40\" cols=\"150\" name=\"opString\"></textarea>"
@@ -181,13 +169,7 @@ public class WebUI {
     	AbstractOperatorLibrary.deleteOperator(opname);
     	List<String> l = AbstractOperatorLibrary.getOperators();
     	ret+= "<h2>Abstract Operators</h2>";
-    	ret += "<ul>";
-    	for(String op : l){
-			ret+= "<li><a href=\"/web/abstractOperators/"+op+"\">"+op+"</a></li>";
-    		
-    	}
-    	ret+="</ul>";
-
+    	ret += display( l, "abstractOperators");
     	ret+="<div><form action=\"/web/abstractOperators/addOperator\" method=\"get\">"
 			+ "Operator name: <input type=\"text\" name=\"opname\"><br>"
 			+ "<textarea rows=\"40\" cols=\"150\" name=\"opString\"></textarea>"
@@ -196,8 +178,6 @@ public class WebUI {
     	ret += footer;
     	return ret;
     }
-    
-
 
     @GET
     @Path("/abstractOperators/addOperator/")
@@ -209,13 +189,7 @@ public class WebUI {
     	AbstractOperatorLibrary.addOperator(opname, opString);
     	List<String> l = AbstractOperatorLibrary.getOperators();
     	ret+= "<h2>Abstract Operators</h2>";
-    	ret += "<ul>";
-    	for(String op : l){
-			ret+= "<li><a href=\"/web/abstractOperators/"+op+"\">"+op+"</a></li>";
-    		
-    	}
-    	ret+="</ul>";
-
+    	ret += display( l, "abstractOperators");
     	ret+="<div><form action=\"/web/abstractOperators/addOperator\" method=\"get\">"
 			+ "Operator name: <input type=\"text\" name=\"opname\"><br>"
 			+ "<textarea rows=\"40\" cols=\"150\" name=\"opString\"></textarea>"
@@ -225,37 +199,14 @@ public class WebUI {
     	return ret;
     }
     
-    
-    
     @GET
     @Produces(MediaType.TEXT_HTML)
     @Path("/operators/")
     public String listOperators() throws IOException {
-    	String ret = header; // + operatorsView;
-    	String sorting_index = "";
-    	String group = "";
+    	String ret = header;
     	List<String> l = OperatorLibrary.getOperators();
-    	//sort the list
-    	Collections.sort( l, String.CASE_INSENSITIVE_ORDER);
     	ret+= "<h2>Operators</h2>";
-    	ret += "<ul>";
-    	for(String op : l){
-    		if( sorting_index.equals( "")){
-    			//ret+= op.substring( 0, 1).toUpperCase() + "</br><li><a href=\"/web/operators/"+op+"\">"+op+"</a></li>";
-    			sorting_index = op.substring( 0, 1).toUpperCase();
-    			group = "<div class=optile>" + op.substring( 0, 1).toUpperCase() + "</br><li><a href=\"/web/operators/"+op+"\">"+op+"</a></li>";
-    			continue;
-    		}
-    		if( !sorting_index.equals( op.substring( 0, 1).toUpperCase())){
-    			//ret+= "</br></br>" + op.substring( 0, 1).toUpperCase() + "</br><li><a href=\"/web/operators/"+op+"\">"+op+"</a></li>";
-    			sorting_index = op.substring( 0, 1).toUpperCase();
-    			ret += group + "</div>";
-    			group = "</br><div class=optile>" + op.substring( 0, 1).toUpperCase() + "</br><li><a href=\"/web/operators/"+op+"\">"+op+"</a></li>";
-    			continue;
-    		}
-			group += "<li><a href=\"/web/operators/"+op+"\">"+op+"</a></li>";
-    	}
-    	ret+= group + "</div></ul>";
+    	ret += display( l, "operators");
 
     	ret+="<div><h2>Add operator:</h2>"
     		+ "<form action=\"/web/operators/addOperator\" method=\"get\">"
@@ -265,8 +216,7 @@ public class WebUI {
     	
     	ret += footer;
         return ret;
-    }
-    
+    }    
 
     @GET
     @Produces(MediaType.TEXT_HTML)
@@ -310,7 +260,6 @@ public class WebUI {
     @Produces(MediaType.TEXT_HTML)
     public String operatorProfile(@QueryParam("opname") String opname,@QueryParam("variable") String variable, @QueryParam("profileType") String profileType) throws Exception {
     	String csv = OperatorLibrary.getProfile(opname, variable,profileType);
-    	//csv="/mahout_kmeans_synth.csv";
     	String ret = header;
 
     	ret+= "<h2>Operator profile: "+opname+"</h2>";
@@ -326,13 +275,7 @@ public class WebUI {
     	OperatorLibrary.editOperator(opname, opString);
     	List<String> l = OperatorLibrary.getOperators();
     	ret+= "<h2>Operators</h2>";
-    	ret += "<ul>";
-    	for(String op : l){
-			ret+= "<li><a href=\"/web/operators/"+op+"\">"+op+"</a></li>";
-    		
-    	}
-    	ret+="</ul>";
-
+    	ret += display( l, "operators");
     	ret+="<div><form action=\"/web/operators/addOperator\" method=\"get\">"
 			+ "Operator name: <input type=\"text\" name=\"opname\"><br>"
 			+ "<textarea rows=\"40\" cols=\"150\" name=\"opString\"></textarea>"
@@ -345,19 +288,12 @@ public class WebUI {
     @GET
     @Path("/operators/deleteOperator/")
     @Produces(MediaType.TEXT_HTML)
-    public String deleteOperator(
-            @QueryParam("opname") String opname) throws IOException {
+    public String deleteOperator( @QueryParam("opname") String opname) throws IOException {
     	String ret = header;
-    	ret+= "<h2>Operators</h2>";
     	OperatorLibrary.deleteOperator(opname);
     	List<String> l = OperatorLibrary.getOperators();
-    	ret += "<ul>";
-    	for(String op : l){
-			ret+= "<li><a href=\"/web/operators/"+op+"\">"+op+"</a></li>";
-    		
-    	}
-    	ret+="</ul>";
-
+    	ret += "<h2>Operators</h2>";
+    	ret += display( l, "operators");
     	ret+="<div><form action=\"/web/operators/addOperator\" method=\"get\">"
 			+ "Operator name: <input type=\"text\" name=\"opname\"><br>"
 			+ "<textarea rows=\"40\" cols=\"150\" name=\"opString\"></textarea>"
@@ -374,16 +310,10 @@ public class WebUI {
             @QueryParam("opname") String opname,
             @QueryParam("opString") String opString) throws Exception {
     	String ret = header;
-    	ret+= "<h2>Operators</h2>";
     	OperatorLibrary.addOperator(opname, opString);
     	List<String> l = OperatorLibrary.getOperators();
-    	ret += "<ul>";
-    	for(String op : l){
-			ret+= "<li><a href=\"/web/operators/"+op+"\">"+op+"</a></li>";
-    		
-    	}
-    	ret+="</ul>";
-
+    	ret+= "<h2>Operators</h2>";
+    	ret += display( l, "operators");
     	ret+="<div><form action=\"/web/operators/addOperator\" method=\"get\">"
 			+ "Operator name: <input type=\"text\" name=\"opname\"><br>"
 			+ "<textarea rows=\"40\" cols=\"150\" name=\"opString\"></textarea>"
@@ -393,8 +323,6 @@ public class WebUI {
     	return ret;
     }
     
-    
-
     @GET
     @Produces(MediaType.TEXT_HTML)
     @Path("/datasets/")
@@ -402,14 +330,7 @@ public class WebUI {
     	String ret = header;
     	ret+= "<h2>Datasets</h2>";
     	List<String> l = DatasetLibrary.getDatasets();
-    	Collections.sort( l, String.CASE_INSENSITIVE_ORDER);
-    	ret += "<ul>";
-    	for(String d : l){
-			ret+= "<li><a href=\"/web/datasets/"+d+"\">"+d+"</a></li>";
-    		
-    	}
-    	ret+="</ul>";
-
+    	ret += display( l, "datasets");
     	ret+="<div><h2>Add dataset:</h2>"
     		+ "<form action=\"/web/datasets/addDataset\" method=\"get\">"
 			+ "Dataset name: <input type=\"text\" name=\"dname\"><br>"
@@ -450,13 +371,7 @@ public class WebUI {
     	DatasetLibrary.deleteDataset(dname);
     	DatasetLibrary.addDataset(dname, dString);
     	List<String> l = DatasetLibrary.getDatasets();
-    	ret += "<ul>";
-    	for(String d : l){
-			ret+= "<li><a href=\"/web/datasets/"+d+"\">"+d+"</a></li>";
-    		
-    	}
-    	ret+="</ul>";
-
+    	ret += display( l, "datasets");
     	ret+="<div><form action=\"/web/datasets/addDataset\" method=\"get\">"
 			+ "Dataset name: <input type=\"text\" name=\"dname\"><br>"
 			+ "<textarea rows=\"40\" cols=\"150\" name=\"dString\"></textarea>"
@@ -475,13 +390,7 @@ public class WebUI {
     	ret+= "<h2>Datasets</h2>";
     	DatasetLibrary.deleteDataset(dname);
     	List<String> l = DatasetLibrary.getDatasets();
-    	ret += "<ul>";
-    	for(String d : l){
-			ret+= "<li><a href=\"/web/datasets/"+d+"\">"+d+"</a></li>";
-    		
-    	}
-    	ret+="</ul>";
-
+    	ret += display( l, "datasets");
     	ret+="<div><form action=\"/web/datasets/addDataset\" method=\"get\">"
 			+ "Dataset name: <input type=\"text\" name=\"dname\"><br>"
 			+ "<textarea rows=\"40\" cols=\"150\" name=\"dString\"></textarea>"
@@ -501,13 +410,7 @@ public class WebUI {
     	ret+= "<h2>Datasets</h2>";
     	DatasetLibrary.addDataset(dname, dString);
     	List<String> l = DatasetLibrary.getDatasets();
-    	ret += "<ul>";
-    	for(String d : l){
-			ret+= "<li><a href=\"/web/datasets/"+d+"\">"+d+"</a></li>";
-    		
-    	}
-    	ret+="</ul>";
-
+    	ret += display( l, "datasets");
     	ret+="<div><form action=\"/web/datasets/addDataset\" method=\"get\">"
 			+ "Dataset name: <input type=\"text\" name=\"dname\"><br>"
 			+ "<textarea rows=\"40\" cols=\"150\" name=\"dString\"></textarea>"
@@ -516,9 +419,6 @@ public class WebUI {
     	ret += footer;
     	return ret;
     }
-
-    
-
     
     @GET
     @Produces(MediaType.TEXT_HTML)
@@ -529,13 +429,7 @@ public class WebUI {
     	ret += "<ul>";
 
     	List<String> l = RunningWorkflowLibrary.getWorkflows();
-    	Collections.sort( l, String.CASE_INSENSITIVE_ORDER);
-    	ret += "<ul>";
-    	for(String w : l){
-			ret+= "<li><a href=\"/web/runningWorkflows/"+w+"\">"+w+"</a></li>";
-    		
-    	}
-    	ret+="</ul>\n";
+    	ret += display( l, "runningWorkflows");
     	ret += footer;
         return ret;
     }
@@ -559,8 +453,7 @@ public class WebUI {
     	
     	ret += footer;
     	return ret;
-    }
-    
+    }    
 
     @GET
     @Path("/runningWorkflows/replan/")
@@ -582,7 +475,6 @@ public class WebUI {
     	return ret;
     }
     
-    
     @GET
     @Produces(MediaType.TEXT_HTML)
     @Path("/workflows/{id}/")
@@ -600,8 +492,6 @@ public class WebUI {
     	ret += footer;
     	return ret;
     }
-    
-
 
     @GET
     @Path("/workflows/execute/")
@@ -609,8 +499,13 @@ public class WebUI {
     public String executeWorkflow(@QueryParam("workflowName") String workflowName) throws Exception{
     	RunningWorkflowLibrary.executeWorkflow(MaterializedWorkflowLibrary.get(workflowName));
     	String trackingUrl = RunningWorkflowLibrary.getTrackingUrl(workflowName);
+    	String logs = RunningWorkflowLibrary.getApplicationLogs(workflowName);
+	String info_msg = "If not yet, add to the local /etc/hosts file, the cluster host names and ips in order for the links to work";
+    	String contLogs = "<ul id=opContainerLogs style=\"list-style-type: none\">" + RunningWorkflowLibrary.getApplicationContainersLogs(workflowName)+"</ul>";
     	String ret = header+
-    			"Tracking URL: <a id=\"trackingURL\" href=\""+trackingUrl+"\">"+trackingUrl+"</a>"+
+    			"APPLICATION MASTER INFO<br>General: <a id=\"trackingURL\" href=\""+trackingUrl+"\">"+trackingUrl+"</a><br>"+
+    			"<span class=info><img src=\"/info.png\" style=\"width:15px;height:15px\"/><span id=info_text>"+info_msg+"</span></span>Logs: <a id=amContainerLogs href=\""+logs+"\">"+logs+"</a><br>"+
+    			"<span class=info><img src=\"/info.png\" style=\"width:15px;height:15px\"/><span id=info_text>"+info_msg+"</span></span>Workflow containers:"+contLogs+
     			"<p id=\"state\">State: "+RunningWorkflowLibrary.getState(workflowName)+"</p>";
     	ret+="</div><div  class=\"mainpage\">";
     	
@@ -622,8 +517,7 @@ public class WebUI {
     	
     	ret += footer;
     	return ret;
-    }
-    
+    }    
     
     @GET
     @Produces(MediaType.TEXT_HTML)
@@ -634,19 +528,11 @@ public class WebUI {
     	ret += "<ul>";
 
     	List<String> l = MaterializedWorkflowLibrary.getWorkflows();
-    	Collections.sort( l, String.CASE_INSENSITIVE_ORDER);
-    	ret += "<ul>";
-    	for(String w : l){
-			ret+= "<li><a href=\"/web/workflows/"+w+"\">"+w+"</a></li>";
-    		
-    	}
-    	ret+="</ul>\n";
+    	ret += display( l, "workflows");
     	ret += footer;
         return ret;
     }
 
-
-    
     @GET
     @Produces(MediaType.TEXT_HTML)
     @Path("/abstractWorkflows/")
@@ -655,16 +541,8 @@ public class WebUI {
 
     	ret+= "<h2>Abstract Workflows</h2>";
     	List<String> l = AbstractWorkflowLibrary.getWorkflows();
-    	Collections.sort( l, String.CASE_INSENSITIVE_ORDER);
-    	ret += "<ul>";
-    	for(String w : l){
-			ret+= "<li><a href=\"/web/abstractWorkflows/"+w+"\">"+w+"</a></li>";
-    		
-    	}
-    	ret+="</ul>\n";
-
+    	ret += display( l, "abstractWorkflows");
     	ret+="</div>";
-
     	ret+="<div  class=\"mainpage\"><p><form action=\"/web/abstractWorkflows/newWorkflow\" method=\"get\">"
     		+ "<p>Name: <input type=\"text\" name=\"workflowName\"></p>"
 			+ "<p><input class=\"styled-button\" type=\"submit\" value=\"New Workflow\"></form></p>";
@@ -676,12 +554,12 @@ public class WebUI {
 
     	String ret = header+abstractWorkflowUp+"/abstractWorkflows/"+workflowName+workflowLow;
     	ret+="</div>";
-
+    	
     	ret+="<div  class=\"mainpage\"><p><form action=\"/web/abstractWorkflows/materialize\" method=\"get\">"
-			+ "Policy: <p><input type=\"hidden\" name=\"workflowName\" value=\""+workflowName+"\">"
-			+ "<textarea rows=\"4\" cols=\"80\" name=\"policy\">"+defaultPolicy()+"</textarea></p>"
-			+ "Parameters: <p><textarea rows=\"4\" cols=\"80\" name=\"parameters\"></textarea></p>"
-			+ "<p><input class=\"styled-button\" type=\"submit\" value=\"Materialize Workflow\"></form></p>";
+    			+ "<div class='side_by_side'>Policy: <p><input type=\"hidden\" name=\"workflowName\" value=\""+workflowName+"\">"
+    			+ "<textarea rows=\"4\" cols=\"60\" name=\"policy\">"+defaultPolicy()+"</textarea></p></div>"
+    			+ "<div class='side_by_side'>Parameters:<p><textarea rows=\"4\" cols=\"60\" name=\"parameters\"></textarea></p></div>"
+    			+ "<div><p><input class='styled-button' type=\"submit\" value=\"Materialize Workflow\"></form></p></div>";
     	
     	ret+="<p><form action=\"/web/abstractWorkflows/addRemove\" method=\"get\">"
     			+ "Comma separated list: <textarea rows=\"1\" cols=\"80\" name=\"name\"></textarea><br>"
@@ -714,10 +592,7 @@ public class WebUI {
     @GET
     @Produces(MediaType.TEXT_HTML)
     @Path("/abstractWorkflows/newWorkflow/")
-    public String newWorkflow(@QueryParam("workflowName") String workflowName) throws Exception {
-		if (workflowName.equals("")) {
-			workflowName = String.format("workflow%d", System.currentTimeMillis());
-		}
+    public String newWorkflow(@QueryParam("workflowName") String workflowName) throws IOException {
     	AbstractWorkflowLibrary.newWorkflow(workflowName);
         return abstractWorkflowView(workflowName);
     }
@@ -725,10 +600,7 @@ public class WebUI {
     @GET
     @Produces(MediaType.TEXT_HTML)
     @Path("/abstractWorkflows/changeGraph/")
-    public String changeAbstractWorkflowDescription(@QueryParam("workflowName") String workflowName,
-													@QueryParam("workflowGraph") String workflowGraph)
-			throws Exception {
-
+    public String changeAbstractWorkflowDescription(@QueryParam("workflowName") String workflowName, @QueryParam("workflowGraph") String workflowGraph) throws IOException {
     	logger.info("workflowName: "+workflowName);
     	logger.info("workflowGraph: "+workflowGraph);
     	
@@ -741,7 +613,7 @@ public class WebUI {
     @Produces(MediaType.TEXT_HTML)
     @Path("/abstractWorkflows/addRemove/")
     public String addNodeToWorkflow(@QueryParam("workflowName") String workflowName, @QueryParam("type") String type, @QueryParam("name") String name, 
-    		@QueryParam("addRemove") String addRemove) throws Exception {
+    		@QueryParam("addRemove") String addRemove) throws IOException {
     	if(name.isEmpty() || type.isEmpty() || workflowName.isEmpty())
             return abstractWorkflowView(workflowName);
     		
@@ -768,8 +640,7 @@ public class WebUI {
     public String abstractWorkflowDescription(@PathParam("workflowName") String workflowName) throws IOException {
     	AbstractWorkflowLibrary.refresh(workflowName);
         return abstractWorkflowView(workflowName);
-    }
-    
+    }    
 
     @GET
     @Path("/abstractWorkflows/materialize/")
@@ -779,16 +650,13 @@ public class WebUI {
     		@QueryParam("parameters") String parameters) throws Exception{
     	AbstractWorkflowLibrary.refresh(workflowName);
     	String mw = AbstractWorkflowLibrary.getMaterializedWorkflow(workflowName,policy,parameters);
-    	String ret = header+"Optimal result for policy function: <br>"+AbstractWorkflow1.getPolicyFromString(policy)+" = "+MaterializedWorkflowLibrary.get(mw).optimalCost;
-    	ret+="</div><div  class=\"mainpage\">";
-    	
-    	ret+=workflowUp+"/workflows/"+mw+workflowLow;
-    	
+    	String ret = header+"<div>Optimal result for policy function: <br>"+AbstractWorkflow1.getPolicyFromString(policy)+" = "+MaterializedWorkflowLibrary.get(mw).optimalCost + "</div>";
     	ret+="<form action=\"/web/workflows/execute\" method=\"get\">"
-        		+ "<input type=\"hidden\" name=\"workflowName\" value=\""+mw+"\">"
-    			+ "<p align=\"right\"><input  class=\"styled-button\" type=\"submit\" value=\"Execute Workflow\"></form>";
-        	
+    			+ "<div><p align=\"right\"><input  class=\"styled-button\" type=\"submit\" value=\"Execute Workflow\"></div>"
+        		+ "<input type=\"hidden\" name=\"workflowName\" value=\""+mw+"\"></form>";
     	
+    	ret+="</div><div  class=\"mainpage\">";
+    	ret+=workflowUp+"/workflows/"+mw+workflowLow;    	
     	ret += footer;
     	return ret;
     }
@@ -798,37 +666,70 @@ public class WebUI {
     @Produces(MediaType.TEXT_HTML)
     public String listServicesAndResources() {
         String action = null;
-        String script = "<script>setTimeout('location.reload(true);', 5000)</script>";
-        String ret = header + script;
+        String img = "<img class=ehidden src=/blueTick.jpg/>";
+        String style = "<style> .engineButton:hover{ color: #47a3da; background: white; border: solid #1a87b9 1px; border-radius: 4px;}</style>";
+        /*
+        style += ".ehidden { visibility: hidden; opacity: 0; transition: visibility 0s 2s, opacity 2s linear; width: 25px; height: 25px;}";
+        style += ".evisible { visibility: visible; opacity: 1; transition: opacity 2s linear; width: 25px; height: 25px; z-index: 10; float: left;}";
+        style += ".engineform{ width: 100%} p.engineform { width: 80%; float: right}</style>";
+        */
+        String script = "<script>setTimeout('location.reload(true);'," + ClusterNodes.period  + ");</script>";
+        /*String script = "<script>";
+        script += "var buttons = [], content = [], i,"
+        			+ "rows = document.getElementById( 'cluster_services').rows.length - 1;"
+        			+ "console.log( 'length', rows);"
+        			+ "buttons = document.querySelectorAll( 'input.engineButton');"
+        			+ "content = document.querySelectorAll( 'img.ehidden');"
+        			+ "console.log( 'buttons', buttons);"
+        			+ "console.log( 'content', content);"
+        			+ "for( i = 0; i < buttons.length; i++) {"
+        			+ "console.log( buttons[ i]);"
+        			+ "console.log( content[ i]);"
+        			+ "buttons[ i][ 'engine'] = false;"
+        			+ "buttons[ i][ 'content'] = content[ i];"
+        			+ "buttons[ i].addEventListener( 'click', function(){"
+        			+ "if( this[ 'engine']){"
+        			+ "this[ 'content'].className = 'ehidden';"
+        			+ "this[ 'engine'] = false;"
+        			+ "}"
+        			+ "else{"
+        			+ "this[ 'content'].className = 'evisible';"
+        			+ "this[ 'engine'] = true;"
+        			+ "}"
+        			+ "}, false);"
+        			+ "}</script>";
+        */
+        String ret = header + style;
         //display cluster services
-        ret += "<table id='cluster_services' border='1' align='left' style='width:33%'><tr><th>Service</th><th>Status</th><th>Action</th></tr>";
+        ret += "<table id='cluster_services' border='1' align='left' style='width:40%; float: left'><tr><th>Service</th><th>Status</th><th>Action</th></tr>";
     	for(Entry<String, Boolean> e : ClusterStatusLibrary.status.entrySet()){
             if( e.getValue()){
-                action ="<form action='/clusterStatus/services/dead/" + e.getKey() + "' method='get'>"
+                action ="<form action='/clusterStatus/services/dead/" + e.getKey() + "' method='get' class=engineform'>"
                             + "<input type='hidden' name='service' value='" + e.getKey() + "'>"
-                            + "<p align='center'><input class='styled-button' type='submit' value='stop'></form>";
+                            + "<p align='center'><input class='styled-button engineButton' type='submit' value='stop'></form>";
             }
             else{
-                action ="<form action='/clusterStatus/services/alive/" + e.getKey() + "' method='get'>"
+                action ="<form  action='/clusterStatus/services/alive/" + e.getKey() + "' method='get' class=engineform>"
                             + "<input type='hidden' name='service' value='" + e.getKey() + "'>"
-                            + "<p align='center'><input class='styled-button' type='submit' value='start'></form>";
+                            + "<p align='center'><input class='styled-button engineButton' type='submit' value='start'></form>";
             }
-			ret+= "<tr><td>"+e.getKey()+"</td><td>"+e.getValue()+"</td><td>" + action + "</td></tr>";
+			//ret+=  "<tr><td>"+e.getKey()+"</td><td>"+e.getValue()+"</td><td style='width:40%; display:flex; flex: row nowrap'>" + action  + img + "</td></tr>";
+            ret+=  "<tr><td>"+e.getKey()+"</td><td>"+e.getValue()+"</td><td>" + action + "</td></tr>";
     	}
     	ret+="</table>";
     	//display static resources
-        ret += "<table id='cluster_static_resources' border='1' align='left' style='width:33%'><tr><th>Capacity Scheduler Resource</th><th>Min</th><th>Max</th></tr>";
+        ret += "<table id='cluster_static_resources' border='1' align='left' style='width:30%; float: right'><tr><th>Capacity Scheduler Resource</th><th>Min</th><th>Max</th></tr>";
     	for(Entry<String, String> e : ClusterStatusLibrary.cluster_static_resources.entrySet()){
 			ret+= "<tr><td>" + e.getKey() + "</td><td>" + e.getValue().split( "_")[ 0] + "</td><td>" + e.getValue().split( "_")[ 1] + "</td></tr>";
     	}
     	ret+="</table>";
     	//display available resources
-        ret += "<table id='cluster_available_resources' border='1' align='left' style='width:33%'><tr><th>YARN Cluster Total Resource</th><th>Min</th><th>Max</th></tr>";
+        ret += "<table id='cluster_available_resources' border='1' align='left' style='width:30%; float: right'><tr><th>YARN Cluster Total Resource</th><th>Min</th><th>Max</th></tr>";
     	for(Entry<String, String> e : ClusterStatusLibrary.cluster_available_resources.entrySet()){
 			ret+= "<tr><td>" + e.getKey() + "</td><td>" + e.getValue() + "</td><td>" + e.getValue() + "</td></tr>";
 		}
     	ret+="</table>" + footer;
-        return ret;
+        return ret  + script;
     }
     
     
@@ -858,4 +759,30 @@ public class WebUI {
 		}
         return out.toString();
     }
+
+   private String display( List< String> l, String tab){
+	String sorting_index = "";
+    	String group = "";
+	//sort the list
+    	Collections.sort( l, String.CASE_INSENSITIVE_ORDER);
+    	String ret = "<ul>";
+    	for(String el : l){
+    		if( sorting_index.equals( "")){
+    			//ret+= op.substring( 0, 1).toUpperCase() + "</br><li><a href=\"/web/operators/"+op+"\">"+op+"</a></li>";
+    			sorting_index = el.substring( 0, 1).toUpperCase();
+    			group = "<div class=optile>" + el.substring( 0, 1).toUpperCase() + "</br><li><a href=\"/web/" + tab + "/"+el+"\">"+el+"</a></li>";
+    			continue;
+    		}
+    		if( !sorting_index.equals( el.substring( 0, 1).toUpperCase())){
+    			//ret+= "</br></br>" + op.substring( 0, 1).toUpperCase() + "</br><li><a href=\"/web/operators/"+op+"\">"+op+"</a></li>";
+    			sorting_index = el.substring( 0, 1).toUpperCase();
+    			ret += group + "</div>";
+    			group = "</br><div class=optile>" + el.substring( 0, 1).toUpperCase() + "</br><li><a href=\"/web/" + tab + "/"+el+"\">"+el+"</a></li>";
+    			continue;
+    		}
+			group += "<li><a href=\"/web/" + tab + "/"+el+"\">"+el+"</a></li>";
+    	}
+    	ret+= group + "</div></ul>\n";
+	return ret;
+	}
 }

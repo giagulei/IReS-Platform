@@ -47,6 +47,12 @@ import weka.core.Attribute;
 public class WorkflowNode implements Comparable<WorkflowNode>{
 	private String abstractName;
 
+	// giag=================
+
+//	private HashMap<String, Double> metrics;
+
+	//======================
+
 	private boolean visited;
 	private Double optimalCost,execTime;
 	public boolean isOperator,isAbstract;
@@ -113,8 +119,19 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 //		}
 	}
 
+	public List<WorkflowNode> materialize(MaterializedWorkflow1 materializedWorkflow,
+										  String fromName) throws Exception {
 
-	public List<WorkflowNode> materialize(MaterializedWorkflow1 materializedWorkflow, Workflow1DPTable dpTable, String fromName) throws Exception {
+		logger.info("Processing : " + toStringNorecursive()+" from name: "+fromName);
+		List<WorkflowNode> ret = new ArrayList<WorkflowNode>();
+		List<List<WorkflowNode>> materializedInputs = new ArrayList<List<WorkflowNode>>();
+
+		return ret;
+	}
+
+	public List<WorkflowNode> materialize(MaterializedWorkflow1 materializedWorkflow,
+										  Workflow1DPTable dpTable, String fromName) throws Exception {
+
 		logger.info("Processing : " + toStringNorecursive()+" from name: "+fromName);
 		//System.out.println("Processing : " + toStringNorecursive()+" from name: "+fromName);
 		List<WorkflowNode> ret = new ArrayList<WorkflowNode>();
@@ -122,18 +139,19 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		WorkflowNode temp = null;
 		if(!isOperator){
 			List<WorkflowNode> p = dpTable.getPlan(dataset);
+			logger.info( toStringNorecursive() + " has as p: " + p);
 			if(p!=null){
 				ret.addAll(p);
 				return ret;
 			}
 		}
 
-
 		//check if intermediate results exist (replan)
 		if( !isOperator){
 			temp = materializedWorkflow.materilizedDatasets.get(getName());
 			if(temp!=null){
 				logger.info("Found existing dataset : " + toStringNorecursive());
+				//logger.info( "Dataset Tree: " + temp.dataset.datasetTree);
 				ret.add(temp);
 				List<WorkflowNode> plan = new ArrayList<WorkflowNode>();
 				plan.add(temp);
@@ -147,6 +165,8 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		}
 
 		for(WorkflowNode in : inputs){
+			//logger.info( toStringNorecursive() + " has inputs: " + inputs);
+			//logger.info( "Input WorkflowNode: " + in);
 			List<WorkflowNode> l = in.materialize(materializedWorkflow,dpTable,getName());
 			materializedInputs.add(l);
 		}
@@ -159,8 +179,9 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				for(Operator op : operators){
 					if(!ClusterStatusLibrary.checkEngineStatus(op)){
 						logger.info( "Specified engine for operator " + op.opName + " is " + op.getEngine());
-						logger.info( "an it is not running. For this, this operator will no be materialized");
-						logger.info( "and consequently the corresponding workflow will not be materialized.");
+						logger.info( "and it is not running. For this, this operator will not be materialized");
+						logger.info( "and consequently the corresponding workflow will not be materialized");
+						logger.info( "if alternatives do not exist for the relative abstract operator.");
 						continue;					
 					}
 					List<HashMap<String,Double>> minCostsForInput = new ArrayList<HashMap<String,Double>>();
@@ -178,7 +199,6 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 						tempInput.inputFor(op,i);
 						WorkflowNode tempInputNode = new WorkflowNode(false, false,"");
 						tempInputNode.setDataset(tempInput);
-						tempInputNode.setAbstractName(this.inputs.get(i).getName());
 						temp.addInput(tempInputNode);
 
 						boolean inputMatches=false;
@@ -200,9 +220,21 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 						logger.info( "materializedInputs: " + materializedInputs);
 						for(WorkflowNode in : materializedInputs.get(i)){
 							logger.info("CHECKING INPUT DATASET: "+in.dataset.datasetName);
+							/*
+								if( checkedInputs < materializedInputs.get( i).size()){
+									checkedInputs++;
+									logger.info( "checkedInputs: " + checkedInputs);
+									continue;
+								}
+								else{
+									//try for each input that does not match a move operator
+									//i = 0;
+								}
+							*/
 							if( tempInput.checkMatch(in.dataset)){
 								logger.info("true");
 								inputMatches=true;
+								tempInputNode.setAbstractName(in.getName());
 								tempInputNode.addInput(in);
 								if(materializedWorkflow.functionTarget.contains("min") && dpTable.getCost(in.dataset)<=operatorOneInputCost){
 									operatorOneInputCost=dpTable.getCost(in.dataset);
@@ -215,45 +247,32 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 									bestInput = in;
 								}
 							}
-						}
-							
-						logger.info("CHECKING for moved dataset: "+this.inputs.get(i));
-
-						List<WorkflowNode> movedDatasets = dpTable.getMovedDatasets(this.inputs.get(i).dataset);
-						if(movedDatasets!=null){
-							for(WorkflowNode movedDataset : movedDatasets){
-								if(tempInput.checkMatch(movedDataset.dataset)){
-									logger.info("Found moved!!");
-									inputMatches=true;
-									tempInputNode.addInput(movedDataset);
-									if(materializedWorkflow.functionTarget.contains("min") && dpTable.getCost(movedDataset.dataset)<=operatorOneInputCost){
-										operatorOneInputCost=dpTable.getCost(movedDataset.dataset);
-										oneInputMetrics = dpTable.getMetrics(movedDataset.dataset);
-										bestInput = movedDataset;
-									}
-									if(materializedWorkflow.functionTarget.contains("max") && dpTable.getCost(movedDataset.dataset)>=operatorOneInputCost){
-										operatorOneInputCost=dpTable.getCost(movedDataset.dataset);
-										oneInputMetrics = dpTable.getMetrics(movedDataset.dataset);
-										bestInput = movedDataset;
-									}
-								}
-							}
-						}
-							
-						for(WorkflowNode in : materializedInputs.get(i)){
-							logger.info("CHECKING Move DATASET: "+in.dataset.datasetName);
-							
-							if(! tempInput.checkMatch(in.dataset)){
+							else{						
 								//check move
+								//hdfs-local move
+								/*WorkflowNode moveNoOp = new WorkflowNode(false, false);
+								moveNoOp.inputs.add(in);
+								Dataset temp2 = tempInput.clone();
+								moveNoOp.setDataset(tempInput);
+								String fs = temp2.getParameter("Constraints.Input"+i+".Engine.FS");
+								if(fs.equals("local")){
+								}*/
+								//one input checked, go for the next
+								logger.info( "checkedInputs: " + checkedInputs);
+								logger.info( "materializedInputs.size(): " + materializedInputs.size());
+								logger.info( "materializedInputs.get("+i+").size(): " + materializedInputs.get(i).size());
 								//generic move
+								logger.info("Check move ");
 								List<Operator> moveOps = OperatorLibrary.checkMove(in.dataset, tempInput);
 								logger.info( "Move operators: " + moveOps);
 								if(!moveOps.isEmpty()){
+									logger.info("Are there any available move operators? True");
 									inputMatches=true;
 									for(Operator m : moveOps){
 										WorkflowNode moveNode = new WorkflowNode(true, false,"");
 										moveNode.setOperator(m);
-										logger.info( "Move node found:\n" + m.opName);
+										logger.info( "Move node " + moveNode.getName() + " added input:\t" + in);
+										//logger.info( "dataset tree " + in.dataset.datasetTree);
 										moveNode.addInput(in);
 										List<WorkflowNode> lin= new ArrayList<WorkflowNode>();
 										lin.add(in);
@@ -305,8 +324,25 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 										}
 									}
 								}
+								else{
+									/* vpapa: maybe there is in an error in description files or
+									 * no appropriate move operator has been defined correctly
+									*/
+									logger.info( "ERROR: For operator " + op.opName + " there "
+											+ " is an input mismatch.\n 1. Check inside its"
+											+ " description file if all properties Constraints.Input"
+											+ " for some input x match with all the corresponding"
+											+ " properties of the input dataset x, probably a"
+											+ " materialized one, like the very first input( s)"
+											+ " of the workflow.\n 2. Check if an appropriate move"
+											+ " operator has been defined correctly.\n This message should be taken"
+											+ " as a real error when the materialization seems"
+											+ " to succeed when pushing 'Materialize Workflow'"
+											+ " button but the workflow is not displayed at all.");
+									logger.info( "Input dataset: " + in.dataset);
+									logger.info( "Input to be matched: " + tempInput);	
+								}
 							}
-							
 						}
 						if(!inputMatches){
 							inputsMatch=false;
@@ -338,50 +374,21 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 							logger.info("copy path from: "+bin.getName()+" to "+tin.getName());
 							if(bin.isOperator){
 								//move
-								System.out.println("Move!! "+bin.inputs.get(0).dataset.datasetName+" "+tin.getName());
 								bin.operator.copyExecVariables(tin.dataset,0,bin.inputs);
-								dpTable.addMovedDataset(bin.inputs.get(0).dataset,tin);
-								
-								ArrayList<WorkflowNode> tp = new ArrayList<>();
-								tp.add(bin.inputs.get(0));
-								tp.add(bin);
-								tp.add(tin);
-								
-								HashMap<String,Double> metrics = new HashMap<String, Double>();
-								for(String m : materializedWorkflow.groupInputs.keySet()){
-									System.out.println(m);
-									metrics.put(m, 0.0);
-								}
-								dpTable.addInputs(tin.dataset, tp, 0.0, metrics);
-								
-//								tp = new ArrayList<>();
-//								tp.add(bin.inputs.get(0));
-//								tp.add(bin);
-//								tp.add(tin);
-//								dpTable.addInputs(tin.dataset, tp, 0.0, metrics);
-								//dpTable.addInputs(tin.dataset, tp, 0.0, metrics);
-//								dpTable.addRecord(tin.dataset, tp, 0.0, metrics);
-//								dpTable.addRecord(bin.inputs.get(0).dataset, tp, 0.0, metrics);
-								
 							}
 							else{
 								bin.dataset.copyExecVariables(tin.dataset,0);
 								bin.dataset.copyOptimization(tin.dataset);
-
 							}
 							i++;
 						}
 
-
-						/* vpapa: move out some common defitions in the following if else
-							statement
-						*/
 						Double prevCost = 0.0;
 						Double optCost	= 0.0;
 						HashMap<String,Double> nextMetrics = null;
 						HashMap<String,Double> bestInputMetrics = new HashMap<String, Double>();
 						/* vpapa: the operator may not have any inputs if it is a generator for
-							example. Thus minCostsForInput is
+							example. Thus minCostsForInput is empty
 						*/
 						if( !minCostsForInput.isEmpty()){
 							for(String m : minCostsForInput.get(0).keySet()){
@@ -418,14 +425,10 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 							bestInputMetrics.put( "execTime", temp.getCost());
 							bestInputs = new ArrayList< WorkflowNode>();
 						}
-						
-						
 						prevCost 	= computePolicyFunction(bestInputMetrics, materializedWorkflow.function);
 						nextMetrics = op.getOptimalPolicyCost(bestInputMetrics, bestInputs, materializedWorkflow.function);
 						
-						
-						optCost = computePolicyFunction(nextMetrics, materializedWorkflow.function);
-						
+						optCost = computePolicyFunction(nextMetrics, materializedWorkflow.function);						
 
 						temp.setExecTime(nextMetrics.get("execTime")-bestInputMetrics.get("execTime"));
 						temp.setOptimalCost(optCost-prevCost);
@@ -487,7 +490,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 									metrics.put(m, 0.0);
 								}
 								dpTable.addRecord(tempOutput, tp, new Double(0), metrics);
-								dpTable.addInputs(out.dataset, tp, new Double(0), metrics);
+								dpTable.addInputs(out.dataset, tp);
 							}
 
 							outN++;
@@ -514,7 +517,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					}
 					ret.addAll(l);
 				}
-				dpTable.addInputs(dataset, ret, new Double(0), new HashMap<String,Double>());
+				dpTable.addRecord(dataset, ret, new Double(0), new HashMap<String,Double>());
 			}
 			else{
 				temp = new WorkflowNode(false, false, getName());
@@ -531,7 +534,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					metrics.put(m, 0.0);
 				}
 
-				dpTable.addInputs(dataset, plan, computePolicyFunction(metrics, materializedWorkflow.function),metrics);
+				dpTable.addRecord(dataset, plan, computePolicyFunction(metrics, materializedWorkflow.function),metrics);
 
 			}
 		}//end of else WorkflowNode is dataset
@@ -856,7 +859,6 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		}
 	}
 
-
 	public String getInMetrics() {
 		
 		String ret ="";
@@ -898,90 +900,97 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		if(!isOperator)
 			return "";
 		else{
-			String ret = "";
-		    for (int i = 0; i < Integer.parseInt(operator.getParameter("Execution.Arguments.number")); i++) {
-		    	String arg = operator.getParameter("Execution.Argument"+i);
-		    	if(arg.startsWith("In")){
-					String[] s = arg.split("\\.");
-		    		int index = Integer.parseInt(s[0].substring((s[0].length() - 1)));
-		    		//int index = Integer.parseInt(arg.charAt(2)+"");
-		    		WorkflowNode n = inputs.get(index);
-		    		String parameter =arg.substring(arg.indexOf(".")+1);
-		    		if(parameter.endsWith("local")){
-		    			parameter=parameter.replace(".local", "");
-		    			logger.info("parameter: "+parameter);
+			String ret = operator.getParameter( "Execution.Arguments.number");
+			if( ret == null){
+				logger.info( "WARNING: For operator " + getName() + " the amount of execution arguments"
+							+ " is null. That means that the operators has not any execution argument. If this"
+							+ " is the case, ignore this warning. The system will take care of it. Otherwise,"
+							+ " this should be taken as an ERROR that means either operator's description"
+							+ " file cannot be read correctly in general or that the property Execution.Arguments.number"
+							+ " is miswritten. In the second case inspect the description file. In the first case"
+							+ " debug is needed.");
+			}
+			int args_amount = ret != null ? Integer.parseInt( operator.getParameter( "Execution.Arguments.number")) : 0;
+			ret = "";
+			for (int i = 0; i < args_amount; i++) {
+				String arg = operator.getParameter("Execution.Argument"+i);
+				if(arg.startsWith("In")){
+					int index = Integer.parseInt(arg.charAt(2)+"");
+					logger.info( "Operator:\t" + getName() + "\tInputs:\t" + inputs);
+					WorkflowNode n = inputs.get(index);
+					String parameter =arg.substring(arg.indexOf(".")+1);
+					if(parameter.endsWith("local")){
+						parameter=parameter.replace(".local", "");
+						logger.info("parameter: "+parameter);
 
-		    			String newArg = n.dataset.getParameter("Execution."+parameter);
-		    			logger.info("newArg: "+newArg);
-		    			newArg = newArg.substring(newArg.lastIndexOf("/")+1, newArg.length());
-		    			logger.info("local path: "+newArg);
-			    		arg=newArg;
-		    		}
-		    		else{
-			    		String newArg = n.dataset.getParameter("Execution."+parameter);
-			    		logger.info( "newArg: " + newArg);
-			    		if( newArg == null){
-			    			logger.info( "ERROR: For input dataset " + n.dataset.datasetName + " the requested parameter");
+						String newArg = n.dataset.getParameter("Execution."+parameter);
+						logger.info("newArg: "+newArg);
+						newArg = newArg.substring(newArg.lastIndexOf("/")+1, newArg.length());
+						logger.info("local path: "+newArg);
+						arg=newArg;
+					}
+					else{
+						//logger.info( "DATASET TREE: " + n.dataset.datasetTree);
+						String newArg = n.dataset.getParameter("Execution."+parameter);
+						logger.info( "newArg: " + newArg);
+						if( newArg == null){
+							logger.info( "ERROR: For input dataset " + n.dataset.datasetName + " the requested parameter");
 			    			logger.info( "Execution." + parameter + " does not exist! This parameter has been asked");
 			    			logger.info( "from operator " + operator.opName + " as a property of input In" + index + ".");
 			    			logger.info( "To solve this, make sure that the input of this dataset, " + n.dataset.datasetName + ",");
 			    			logger.info( "i.e. the operator that corresponds to input In" + index + " defines a property");
-			    			logger.info( "'Execution.Output" + index + "." + parameter + ".");
+			    			logger.info( "'Execution." + parameter + ".");
 			    		}
 			    		arg=newArg;
-		    		}
-		    		/*boolean dataset = false;
-		    		while(!n.isOperator){
-		    			if(n.inputs.isEmpty()){
-		    				arg = n.dataset.datasetName;
-		    				dataset=true;
-		    				break;
-		    			}
-		    			else{
-		    				n=n.inputs.get(0);
-		    			}
-		    		}
-		    		if(!dataset)
-		    			arg = n.operator.getParameter("Execution.Output0.path");*/
-		    	}
-		    	else if(arg.startsWith("Optimization")){
-		    		String newArg = operator.getParameter(arg);
-		    		logger.info( "newArg: " + newArg);
-		    		if( newArg == null){
-		    			newArg = operator.getParameter("SelectedParams."+arg.substring(arg.indexOf(".")+1));
-		    		}
-		    		logger.info( "newArg: " + newArg);
-		    		arg=newArg;
-		    		
-		    	}
-		    	/* vpapa: an execution argument may be surrounded by double or single quotes
-		    		in which case no double or single quotes should be added and the argument
-		    		should be taken as is. If the argument is not surrounded by double quotes
-		    		and it also contains spaces, then it must be contained by double or single
-		    		quotes. This way bash interpreter can understand correctly the execution
-		    		arguments and the operator can be executed if no other error rises.
-		    	*/
-		    	//does argument starts and ends with double or single quotes?
-		    	if( ( arg.startsWith( "\"") && arg.endsWith( "\"")) || ( arg.startsWith( "'") && arg.endsWith( "'"))){
-		    		//return as is
-		    		ret += arg + " ";
-		    	}
-		    	else{
-					//argument is not surrounded by double( single) quotes, does it contain spaces?
-					if(arg.contains(" ")){
-						//surround argument by double quotes
-						ret += "\"" + arg + "\"" + " ";
 					}
-					else{
-						//argument is not surrounded by double( single) quotes and it does
-						//not contain spaces
-						ret += arg + " ";
+					/*boolean dataset = false;
+					while(!n.isOperator){
+						if(n.inputs.isEmpty()){
+							arg = n.dataset.datasetName;
+							dataset=true;
+							break;
+						}
+						else{
+							n=n.inputs.get(0);
+						}
+					}
+					if(!dataset)
+						arg = n.operator.getParameter("Execution.Output0.path");*/
+				}
+				else if(arg.startsWith("Optimization")){
+					String newArg = operator.getParameter(arg);
+					logger.info( "newArg: " + newArg);
+					if( newArg == null){
+						newArg = operator.getParameter("SelectedParams."+arg.substring(arg.indexOf(".")+1));
+					}
+					logger.info( "newArg: " + newArg);
+					arg=newArg;
+					
+				}
+				/* vpapa: enable execution arguments be surrounded by double or single quotes
+					or not into operator's description file while bash interpreter can understand
+					them correctly
+				*/
+				if( ( arg.startsWith( "\"") && arg.endsWith( "\"")) || ( arg.startsWith( "'") && arg.endsWith( "'"))){
+					//return as is
+					ret += arg + " ";
+				}
+				else{
+						//argument is not surrounded by double( single) quotes, does it contain spaces?
+						if(arg.contains(" ")){
+							//surround argument by double quotes
+							ret += "\"" + arg + "\"" + " ";
+						}
+						else{
+							//return as is
+							ret += arg + " ";
 					}  	
-		    	}
+				}
 			}
 			return ret;
 		}
 	}
+	
 	public List<String> getOutputFiles() {
 		List<String> ret = new ArrayList<String>();
 		if(!isOperator)
@@ -1009,10 +1018,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 			String[] files = inFiles.split(",");
 			for (int i = 0; i < files.length; i++) {
 				if(files[i].startsWith("In")){
-
-					String[] s = files[i].split("\\.");
-		    		int index = Integer.parseInt(s[0].substring((s[0].length() - 1)));
-					//int index = Integer.parseInt(files[i].charAt(2)+"");
+					int index = Integer.parseInt(files[i].charAt(2)+"");
 		    		WorkflowNode n = inputs.get(index);
 					String path = n.dataset.getParameter("Execution.path");
 			    	ret.put(path.substring(path.lastIndexOf("/")+1),path);
@@ -1054,10 +1060,6 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		}
 	}
 
-	private boolean isDataset() {
-		return !isOperator;
-	}
-
 	public Double getExecTime() {
 		if(isOperator && !isAbstract){
     		return execTime;
@@ -1066,5 +1068,4 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
     		return 0.0;
 		}
 	}
-
 }

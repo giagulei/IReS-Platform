@@ -21,6 +21,7 @@ import gr.ntua.cslab.asap.daemon.AbstractWorkflowLibrary;
 import gr.ntua.cslab.asap.rest.beans.*;
 import gr.ntua.cslab.asap.staticLibraries.MaterializedWorkflowLibrary;
 import gr.ntua.cslab.asap.workflow.MaterializedWorkflow1;
+import gr.ntua.cslab.asap.workflow.MObjMaterializedWorkflow;
 
 import java.io.IOException;
 import java.util.List;
@@ -51,7 +52,7 @@ public class Workflows {
 	@Produces("application/json")
     public WorkflowDictionary listOperators() throws IOException, NumberFormatException, EvaluationException {
 
-		MaterializedWorkflow1 mw = new MaterializedWorkflow1("latest","/tmp");
+		MObjMaterializedWorkflow mw = new MObjMaterializedWorkflow("latest","/tmp");
 		WorkflowDictionary ret = mw.toWorkflowDictionary("\n");
 		
 		

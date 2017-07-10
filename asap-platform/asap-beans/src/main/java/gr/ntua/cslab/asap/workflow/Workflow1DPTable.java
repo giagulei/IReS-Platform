@@ -25,7 +25,6 @@ import java.util.List;
 
 public class Workflow1DPTable {
 	private HashMap<Dataset,List<WorkflowNode>> dpTable;
-	private HashMap<Dataset,List<WorkflowNode>> movedDatasets;
 	private HashMap<Dataset,Double> dpCost;
 	private HashMap<Dataset,HashMap<String,Double>> dpMetrics;
 
@@ -33,21 +32,9 @@ public class Workflow1DPTable {
 		dpTable = new HashMap<Dataset,List<WorkflowNode>>();
 		dpCost = new HashMap<Dataset,Double>();
 		dpMetrics = new HashMap<Dataset, HashMap<String,Double>>();
-		movedDatasets = new HashMap<Dataset,List<WorkflowNode>>();
 	}
 
-//	public void addInputs(Dataset dataset, ArrayList<WorkflowNode> plan) {
-//		List<WorkflowNode> temp = dpTable.get(dataset);
-//		if(temp!=null){
-//			temp.addAll(plan);
-//		}
-//		else{
-//			dpTable.put(dataset, plan);
-//		}
-//		
-//	}
-	
-	public void addInputs(Dataset dataset, List<WorkflowNode> plan, Double cost, HashMap<String,Double> metrics) {
+	public void addInputs(Dataset dataset, ArrayList<WorkflowNode> plan) {
 		List<WorkflowNode> temp = dpTable.get(dataset);
 		if(temp!=null){
 			temp.addAll(plan);
@@ -55,11 +42,7 @@ public class Workflow1DPTable {
 		else{
 			dpTable.put(dataset, plan);
 		}
-		dpCost.put(dataset,cost);
-		dpMetrics.put(dataset,metrics);
-		
 	}
-
 	public void addRecord(Dataset dataset, List<WorkflowNode> plan, Double cost, HashMap<String,Double> metrics){
 		dpTable.put(dataset, plan);
 		dpCost.put(dataset,cost);
@@ -81,21 +64,5 @@ public class Workflow1DPTable {
 	
 	public HashMap<String,Double> getMetrics(Dataset dataset){
 		return dpMetrics.get(dataset);
-	}
-
-	public void addMovedDataset(Dataset dataset, WorkflowNode movedDataset) {
-		List<WorkflowNode> temp = movedDatasets.get(dataset);
-		if(temp!=null){
-			temp.add(movedDataset);
-		}
-		else{
-			List<WorkflowNode> v =  new ArrayList<>();
-			v.add(movedDataset);
-			movedDatasets.put(dataset, v);
-		}
-	}
-
-	public List<WorkflowNode> getMovedDatasets(Dataset dataset){
-		return movedDatasets.get(dataset);
 	}
 }

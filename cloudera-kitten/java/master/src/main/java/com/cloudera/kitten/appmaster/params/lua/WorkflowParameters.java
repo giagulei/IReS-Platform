@@ -17,6 +17,7 @@ package com.cloudera.kitten.appmaster.params.lua;
 import gr.ntua.cslab.asap.rest.beans.OperatorDictionary;
 import gr.ntua.cslab.asap.rest.beans.WorkflowDictionary;
 import gr.ntua.cslab.asap.utils.Utils;
+import gr.ntua.cslab.asap.workflow.MObjMaterializedWorkflow;
 import gr.ntua.cslab.asap.workflow.MaterializedWorkflow1;
 
 import java.io.BufferedReader;
@@ -36,8 +37,11 @@ import java.util.Map.Entry;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 
 import com.cloudera.kitten.ContainerLaunchParameters;
+import com.cloudera.kitten.appmaster.AbstractClient;
 import com.cloudera.kitten.appmaster.ApplicationMasterParameters;
 import com.cloudera.kitten.appmaster.service.WorkflowService;
 import com.cloudera.kitten.appmaster.service.ContainerTracker;
@@ -53,20 +57,22 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
 
 public class WorkflowParameters implements ApplicationMasterParameters {
 
 	private static final Log LOG = LogFactory.getLog(WorkflowParameters.class);
-	private final HashMap<String,LuaWrapper> env;
+	private HashMap<String,LuaWrapper> env;
 	private LuaWrapper e0;
-	private final Configuration conf;
-	private final Map<String, URI> localToUris;
-	private final String hostname;
+	private Configuration conf;
+	private Map<String, URI> localToUris;
+	private String hostname;
+	private Map< String, Object> extras;
 
 	private int clientPort = 0;
 	private String trackingUrl = "";
 	public WorkflowDictionary workflow;
-	public MaterializedWorkflow1 materializedWorkflow;
+	public MObjMaterializedWorkflow materializedWorkflow;
 	public String jobName;
 
   public WorkflowParameters(Configuration conf) throws Exception{
@@ -81,101 +87,160 @@ public class WorkflowParameters implements ApplicationMasterParameters {
     this(script, jobName, conf, ImmutableMap.<String, Object>of());
   }
   
-  public WorkflowParameters( WorkflowDictionary wd, String jobName, Configuration conf) throws Exception{
-	    this( wd, jobName, conf, ImmutableMap.<String, Object>of(), loadLocalToUris());
-  }
-  
   public WorkflowParameters(String script, String jobName, Configuration conf, Map<String, Object> extras) throws Exception {
     this(script, jobName, conf, extras, loadLocalToUris());
   }
   
+	 /**
+	 * Creates a WorkflowParameters object when the workflow to be executed is provided as
+	 * an xml script.
+	 * 
+	 * @param wd 		the workflow to execute
+	 * @param jobName 	workflow's name
+	 * @param conf 		the YarnConfiguration of the workflow
+	 * @param extras	
+	 * @param localToUris 
+	 */
   public WorkflowParameters(String script, String jobName, Configuration conf, Map<String, Object> extras, Map<String, URI> localToUris) throws Exception {
-	  
-	    this.env = new HashMap<String,LuaWrapper>();
-		HashMap<String,String> operators = new HashMap<String, String>();
+        this.env = new HashMap<String,LuaWrapper>();
+	HashMap<String,String> operators = new HashMap<String, String>();
 
-		workflow = Utils.unmarshall(script);
-		workflow.setName( jobName);
-		
-		materializedWorkflow = new MaterializedWorkflow1( workflow.getName(), "/tmp");
-		materializedWorkflow.readFromWorkflowDictionary(workflow);
-		LOG.info(materializedWorkflow.getTargets().get(0).toStringRecursive());
-		
-		for(OperatorDictionary op : workflow.getOperators()){
-			if(op.getIsOperator().equals("true") && op.getStatus().equals("warn")){
-				op.setExecTime("");
-				operators.put(op.getName(), op.getName()+".lua");
-			}
+	workflow = Utils.unmarshall(script);
+	workflow.setName( jobName);
+	
+	materializedWorkflow = new MObjMaterializedWorkflow( jobName, "/tmp");
+	materializedWorkflow.readFromWorkflowDictionary(workflow);
+	LOG.info(materializedWorkflow.getTargets().get(0).toStringRecursive());
+	
+	for(OperatorDictionary op : workflow.getOperators()){
+		if(op.getIsOperator().equals("true") && op.getStatus().equals("warn")){
+			op.setExecTime("");
+			//LOG.info( "OPERATOR NAME: " + op.getName());
+			operators.put(op.getName(), op.getName() + ".lua");
+			//operators.put(op.getName(), op.getPropertyValue( "Execution.LuaScript"));
 		}
-		for(OperatorDictionary op : workflow.getOperators()){
-			if(op.getStatus().equals("warn") && op.getInput().isEmpty()){
-				//we are dealing with the first dataset of the workflow which
-				//has not have an input i.e. op.getInput().isEmpty() is true
+	}
+	for(OperatorDictionary op : workflow.getOperators()){
+		if(op.getStatus().equals("warn") && op.getInput().isEmpty()){
+			//we are dealing with the first dataset of the workflow which
+			//has not have an input i.e. op.getInput().isEmpty() is true
 				op.setStatus("completed");
 				workflow.setOutputsRunning(op.getName(), "completed");
 			}
 		}
-		LOG.info("Operators: "+operators);
-		
-		int i =0;
-		//LuaWrapper l = new LuaWrapper("BasicLuaConf.lua", loadExtras(extras)).getTable("operator");
-		for(Entry<String, String> e : operators.entrySet()){
-			LuaWrapper l = new LuaWrapper(e.getValue(), loadExtras(extras)).getTable("operator");
-			if(i==0)
-				this.e0=l;
-			i++;
-			this.env.put(e.getKey(),l);
-		}
-		this.conf = conf;
-		this.localToUris = localToUris;
-		this.hostname = NetUtils.getHostname();
-		this.jobName = jobName;
-  }
+	LOG.info("Operators: "+operators);
+	int i =0;
+	for(Entry<String, String> e : operators.entrySet()){
+		LuaWrapper l = new LuaWrapper(e.getValue(), loadExtras(extras)).getTable("operator");
+		if(i==0)
+			this.e0=l;
+		i++;
+		this.env.put(e.getKey(),l);
+	}
+	this.conf = conf;
+	this.localToUris = localToUris;
+	this.hostname = NetUtils.getHostname();
+	this.jobName = jobName;
+	this.extras = extras;
+  }  
   
-  public WorkflowParameters( WorkflowDictionary wd, String jobName, Configuration conf, Map<String, Object> extras, Map<String, URI> localToUris) throws Exception {
-	  
-	    this.env = new HashMap<String,LuaWrapper>();
-		HashMap<String,String> operators = new HashMap<String, String>();
+   /**
+  	 * Enables workflow's execution by re-setting workflow's parameters appropriately
+	 * when replanning is needed
+  	 * 
+  	 * @param wd 		the workflow to execute
+  	 * @param jobName 	workflow's name
+  	 * @param conf 		the YarnConfiguration of the workflow
+  	 * @param extras	
+  	 * @param localToUris 
+  	 */
+    public void resetWorkflowParameters( int applicationId) throws Exception{
+		this.env.clear();
+  		HashMap<String,String> operators = new HashMap<String, String>();
+  		FileSystem fs = FileSystem.get( conf);
+  		File f = null;
+  		
+  		materializedWorkflow = new MObjMaterializedWorkflow( this.jobName, "/tmp");
+  		materializedWorkflow.readFromWorkflowDictionary( workflow);
+  		//LOG.info(materializedWorkflow.getTargets().get(0).toStringRecursive());
+  		
+  		for(OperatorDictionary op : workflow.getOperators()){
+  			if(op.getIsOperator().equals("true") && op.getStatus().equals("warn")){
+				//LOG.info( "Operator:\t" + op.getName() + "\tInputs:\t" + op.getInput());
+  				op.setExecTime("");
+  				operators.put(	op.getName(), op.getPropertyValue( "Execution.LuaScript"));
+  			}
+  		}
+  		for(OperatorDictionary op : workflow.getOperators()){
+  			//LOG.info( "Operator:\t" + op.getName() + "\tInputs:\t" + op.getInput() + "\tReplanned:\t" + op.isReplanned());
+  			if(op.getStatus().equals("warn") && ( op.getInput().isEmpty() || op.isReplanned())){
+  				op.setStatus("completed");
+  				workflow.setOutputsRunning( op.getName(), "completed");
+  			}
+  		}
+  		LOG.info("Operators: " + operators);
+  		
+  		int i = 0;
+  		String luafilename = null;
+  		LuaWrapper lwr = null;
+  		for(Entry<String, String> e : operators.entrySet()){
+  			LOG.info( e.getKey() + "\t" + e.getValue());
+  			luafilename = e.getValue();
+  			f = new File( luafilename);
+  			if( ! f.exists()){
+  				luafilename = getAppPath( fs, applicationId) + "/" + luafilename;
+  				luafilename = copyFromHdfs( luafilename, conf);
+  			}
+  			lwr = new LuaWrapper( luafilename, loadExtras( this.extras)).getTable("operator");
+  			if(i==0)
+  				this.e0=lwr;
+  			i++;
+  			this.env.put( e.getKey(), lwr);
+  		}
+    }
+  
+    /**
+  	 * Copies a file from application's directory to the local file system
+  	 * 
+  	 * @author Vassilis Papaioannou
+  	 * @parm hdfsDataName 	the hdfs file to copy
+  	 * @param conf 			the Configuration of the cluster
+  	 */
+    private static String copyFromHdfs( String hdfsDataName, Configuration conf) throws IOException {
+    	String APP_BASE_DIR = "kitten.app.base.dir";
+        FileSystem fs = FileSystem.get(conf);
+        hdfsDataName = hdfsDataName.substring( hdfsDataName.indexOf( "/user/"));
 
-		workflow = wd;
-		workflow.setName( jobName);
-		
-		materializedWorkflow = new MaterializedWorkflow1( workflow.getName(), "/tmp");
-		materializedWorkflow.readFromWorkflowDictionary( workflow);
-		LOG.info(materializedWorkflow.getTargets().get(0).toStringRecursive());
-		
-		for(OperatorDictionary op : workflow.getOperators()){
-			if(op.getIsOperator().equals("true") && op.getStatus().equals("warn")){
-				op.setExecTime("");
-				operators.put(op.getName(), op.getName()+".lua");
-			}
-		}
-		for(OperatorDictionary op : workflow.getOperators()){
-			if(op.getStatus().equals("warn") && op.getInput().isEmpty()){
-				//we are dealing with the first dataset of the workflow which
-				//has not have an input i.e. op.getInput().isEmpty() is true
-				op.setStatus("completed");
-				workflow.setOutputsRunning(op.getName(), "completed");
-			}
-		}
-		LOG.info("Operators: "+operators);
-		
-		int i =0;
-		//LuaWrapper l = new LuaWrapper("BasicLuaConf.lua", loadExtras(extras)).getTable("operator");
-		for(Entry<String, String> e : operators.entrySet()){
-			LuaWrapper l = new LuaWrapper(e.getValue(), loadExtras(extras)).getTable("operator");
-			if(i==0)
-				this.e0=l;
-			i++;
-			this.env.put(e.getKey(),l);
-		}
-		this.conf = conf;
-		this.localToUris = localToUris;
-		this.hostname = NetUtils.getHostname();
-		this.jobName = jobName;
-}
-  
-  private static Map<String, URI> loadLocalToUris() {
+        Path src = new Path( hdfsDataName);
+        Path dst = new Path( "./" + src.getName());
+        fs.copyToLocalFile( src, dst);
+        LOG.info( "Application has " + conf.get(APP_BASE_DIR) + " as base dir");
+        LOG.info( "Copied hdfs file " + hdfsDataName + " locally to " + dst);
+        return dst.toString();
+    }
+
+    /**
+  	 * Returns application hdfs path
+  	 * 
+  	 * @author Vassilis Papaioannou
+  	 * @parm fs 				the hdfs filesystem
+  	 * @param applicationId 	application's id
+  	 */
+    private String getAppPath( FileSystem fs, int applicationId){
+    	String APP_BASE_DIR = "kitten.app.base.dir";
+    	String appDir = "app";
+    	String abd = conf.get( APP_BASE_DIR);
+        if( applicationId > 0) {
+            appDir += applicationId;
+        }
+    	if( abd != null) {
+          return abd + appDir;
+        } else {
+          return fs.getHomeDirectory() + "/" + appDir;
+        }
+    }
+    
+  public static Map<String, URI> loadLocalToUris() {
     Map<String, String> e = System.getenv();
     if (e.containsKey(LuaFields.KITTEN_LOCAL_FILE_TO_URI)) {
       return LocalDataHelper.deserialize(e.get(LuaFields.KITTEN_LOCAL_FILE_TO_URI));
@@ -227,7 +292,7 @@ public class WorkflowParameters implements ApplicationMasterParameters {
   @Override
   public int getAllowedFailures() {
     if (e0.isNil(LuaFields.TOLERATED_FAILURES)) {
-      return 54; // TODO: kind of arbitrary, no? :)
+      return 14; // TODO: kind of arbitrary, no? :)
     } else {
       return e0.getInteger(LuaFields.TOLERATED_FAILURES);
     }
@@ -252,11 +317,11 @@ public class WorkflowParameters implements ApplicationMasterParameters {
 		    	  //String name = "operator_"+i+"_"+e.getKey();
 		    	  String name = e.getKey();
 		        try {
-					clp.put(e.getKey(),new AsapLuaContainerLaunchParameters(e.getValue().getTable(LuaFields.CONTAINER), name, conf, localToUris, materializedWorkflow, e.getKey()));
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
+				clp.put(e.getKey(),new AsapLuaContainerLaunchParameters(e.getValue().getTable(LuaFields.CONTAINER), name, conf, localToUris, materializedWorkflow, e.getKey()));
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
 		        i++;
 		    }
 	  }
@@ -273,6 +338,8 @@ public class WorkflowParameters implements ApplicationMasterParameters {
 	    LOG.info("Trackers: " + trackers);
 	    
 	    for(Entry<String, ContainerTracker> e : trackers.entrySet()){
+	    	//LOG.info( "CREATING TRACKER: " + e.getKey());
+	    	//LOG.info( "INPUTS: " + workflow.getOperator(e.getKey()).getInput());
 	    	for(String in : workflow.getOperator(e.getKey()).getInput()){
 	    		addTrackerDependencyRecursive(in, e.getKey(), trackers);
 	    	}
@@ -285,10 +352,12 @@ public class WorkflowParameters implements ApplicationMasterParameters {
 		ContainerTracker outTracker = trackers.get(out);
 		ContainerTracker inTracker = trackers.get(in);
 		OperatorDictionary inOp = workflow.getOperator(in);
+		/*
 		LOG.info( "OUTTARCKER: " + outTracker);
 		LOG.info( "INTRACKER: " + inTracker);
 		LOG.info( "IN OPERATOR: " + inOp.getName() + "\twith status " + inOp.getStatus() + "\thas inputs " + inOp.getInput());
 		LOG.info( "OUT OPERATOR: " + out);
+		*/
 		if( inOp.getStatus().equals( "stopped") || inOp.getStatus().equals( "completed") || inOp.getStatus().equals( "failed"))
 			return;
 		if(inOp.getIsOperator().equals("true")){

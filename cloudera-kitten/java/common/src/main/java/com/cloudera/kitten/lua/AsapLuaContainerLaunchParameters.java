@@ -17,6 +17,7 @@ package com.cloudera.kitten.lua;
 import gr.ntua.cslab.asap.operators.Operator;
 import gr.ntua.cslab.asap.operators.SpecTree;
 import gr.ntua.cslab.asap.rest.beans.OperatorDictionary;
+import gr.ntua.cslab.asap.workflow.MObjMaterializedWorkflow;
 import gr.ntua.cslab.asap.workflow.MaterializedWorkflow1;
 import gr.ntua.cslab.asap.workflow.WorkflowNode;
 
@@ -28,8 +29,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.net.URI;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.UUID;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -65,32 +70,37 @@ public class AsapLuaContainerLaunchParameters implements ContainerLaunchParamete
 	private String execScript;
 	private int globalContainerId;
 	
-	private MaterializedWorkflow1 workflow;
+	private MObjMaterializedWorkflow workflow;
 	
 	private OperatorDictionary operatorDictionary;
 	private WorkflowNode operator;
 	
 	private String opName;
 
-  public AsapLuaContainerLaunchParameters(LuaValue lv, String name, Configuration conf, Map<String, URI> localFileUris, MaterializedWorkflow1 workflow, String opName) throws IOException {
+  public AsapLuaContainerLaunchParameters(LuaValue lv, String name, Configuration conf, Map<String, URI> localFileUris, MObjMaterializedWorkflow workflow, String opName) throws IOException {
     this(new LuaWrapper(lv.checktable()), name, conf, localFileUris, new Extras(),workflow, opName);
   }
   
-  public AsapLuaContainerLaunchParameters(LuaWrapper lv, String name, Configuration conf, Map<String, URI> localFileUris, MaterializedWorkflow1 workflow, String opName) throws IOException {
+  public AsapLuaContainerLaunchParameters(LuaWrapper lv, String name, Configuration conf, Map<String, URI> localFileUris, MObjMaterializedWorkflow workflow, String opName) throws IOException {
     this(lv, name, conf, localFileUris, new Extras(),workflow, opName);
   }
   
   public AsapLuaContainerLaunchParameters(LuaWrapper lv, String name, Configuration conf,
-      Map<String, URI> localFileUris, Extras extras, MaterializedWorkflow1 workflow, String opName) throws IOException {
-	  this.name=name;
-    this.lv = lv;
-    this.conf = conf;
-    this.localFileUris = localFileUris;
-    this.extras = extras;
-    this.workflow = workflow;
-    this.opName = opName;
-    this.operator = workflow.nodes.get(opName);
-    globalContainerId=0;
+      Map<String, URI> localFileUris, Extras extras, MObjMaterializedWorkflow workflow, String opName) throws IOException {
+	  	this.name=name;
+	    this.lv = lv;
+	    this.conf = conf;
+	    this.localFileUris = localFileUris;
+	    this.extras = extras;
+	    this.workflow = workflow;
+	    this.opName = opName;
+	    this.operator = workflow.nodes.get(opName);
+	    /*
+	    LOG.info( "ASAP OPERATOR: " + operator);
+	    LOG.info( "ASAP OPERATOR: " + operator.operator.opName);
+	    LOG.info( "ASAP OPERATOR: " + operator.operator.optree);
+	    */
+	    globalContainerId=0;
   }
 
 
@@ -121,8 +131,7 @@ public class AsapLuaContainerLaunchParameters implements ContainerLaunchParamete
   }*/
   
   public int getCores() {
-      String cores;
-      cores = operator.operator.getParameter("Optimization.cores");
+      String cores = operator.operator == null ? null: operator.operator.getParameter("Optimization.cores");
       if (cores == null)
           cores = operator.operator.getParameter("SelectedParam.cores");
 
@@ -135,13 +144,13 @@ public class AsapLuaContainerLaunchParameters implements ContainerLaunchParamete
   }
 
   public int getMemory() {
-      String memory = operator.operator.getParameter("Optimization.memory");
+      String memory = operator.operator == null ? null: operator.operator.getParameter("Optimization.memory");
       if (memory == null)
           memory = operator.operator.getParameter("SelectedParam.memory");
 
       if (memory != null) {
           Double m = Double.parseDouble(memory);
-          LOG.info("CORES SET TO "+memory+" FOR OPERATOR "+operator.getName());
+          LOG.info("MEMORY SET TO "+memory+" FOR OPERATOR "+operator.getName());
           return m.intValue();
       }
       return lv.getInteger(LuaFields.MEMORY);
@@ -196,18 +205,14 @@ public class AsapLuaContainerLaunchParameters implements ContainerLaunchParamete
       localResources.put(LuaFields.KITTEN_JOB_XML_FILE, confRsrc);
     }
     
-
-    
     addScript(localResources);
     addOperatorInputs(localResources);
     //LOG.info("localFileUris: "+localFileUris);
     LOG.info("localResources: "+localResources.keySet());
-    //System.out.println(localResources);
-    
+    //System.out.println(localResources); 
     
     return localResources;
   }
-
 
   private void addOperatorInputs(Map<String, LocalResource> localResources) throws IOException {
 	  LOG.info("Inputs: "+operator.getInputFiles());
@@ -236,7 +241,7 @@ public class AsapLuaContainerLaunchParameters implements ContainerLaunchParamete
 	  }*/
   }
 
-private void addScript(Map<String, LocalResource> lres) throws IOException {
+  private void addScript(Map<String, LocalResource> lres) throws IOException {
 	  LocalResource nl = constructScriptResource();
 	  lres.put(execScript, nl);
   }
@@ -352,7 +357,6 @@ private void addScript(Map<String, LocalResource> lres) throws IOException {
   @Override
   public List<String> getCommands() throws IOException {
     List<String> cmds = Lists.newArrayList();
-
     if (!lv.isNil(LuaFields.COMMANDS)) {
       Iterator<LuaPair> pairsIter = lv.getTable(LuaFields.COMMANDS).arrayIterator();
       while (pairsIter.hasNext()) {
@@ -373,22 +377,20 @@ private void addScript(Map<String, LocalResource> lres) throws IOException {
     if (cmds.isEmpty()) {
       LOG.fatal("No commands found in container!");
     }
-    
 
     dir = localFileUris.get(LuaFields.KITTEN_JOB_XML_FILE).getPath();
     dir = dir.substring(0, dir.lastIndexOf("/"));
     //System.out.println("Dir: " +dir);
     //String args = opName+" "+operator.getArguments();
+    LOG.info( "WORKFLOW NODE IS: " + opName);
     String args = operator.getArguments();
 
     String hdfs = conf.get("asap.hdfs_path");
     String asap = conf.get("asap.asap_path");
-    String asapHome = asap.split("/bin")[0];
-
     List<String> oldcmds = cmds;
     cmds = new ArrayList<String>();
-    //cmds.add("export HOME=/root");
-    //cmds.add("export ASAP_HOME=" + asapHome + "; export PATH=\"$PATH:$ASAP_HOME/bin/\"");
+    cmds.add("export HOME=/root");
+    cmds.add("export ASAP_HOME=/root/asap; export PATH=\"$PATH:$ASAP_HOME/bin/\"");
     cmds.add(asap +" monitor start");
     
     String outdir = dir+"/"+this.name;//+"_"+globalContainerId;
@@ -409,7 +411,6 @@ private void addScript(Map<String, LocalResource> lres) throws IOException {
     }
 
     //List<String> stageInFiles = getStageInFiles();
-    
     //System.out.println("stageOutFiles: "+stageOutFiles);
     cmds.add("ls -ltr");
     //cmds.add("ls -ltr asapData/");
@@ -433,10 +434,8 @@ private void addScript(Map<String, LocalResource> lres) throws IOException {
     
     return cmds;
   }
-  
 
-
-private String writeExecutionScript(List<String> cmds) throws IOException {
+  private String writeExecutionScript(List<String> cmds) throws IOException {
 	  UUID id = UUID.randomUUID();
 	  String ret = "script_"+id+".sh";
 	  File fout = new File("/tmp/"+ret);

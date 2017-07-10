@@ -1,3 +1,0 @@
-[submodule "python/web-analytics"]
-	path = python/web-analytics
-	url = https://github.com/project-asap/web-analytics.git

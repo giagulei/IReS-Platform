@@ -17,23 +17,25 @@
 <!-- Put site-specific property overrides in this file. -->
 
 <configuration>
-  <property>
-    <name>io.compression.codecs</name>
-    <value>org.apache.hadoop.io.compress.GzipCodec</value>
-    <description>
-      A comma-separated list of the compression codec classes that can be used
-      for compression/decompression. In addition to any classes specified with
-      this property (which take precedence), codec classes on the classpath are
-      discovered using a Java ServiceLoader.
-    </description>
-  </property>
-  <property>
-    <name>io.file.buffer.size</name>
-    <value>131072</value>
-    <description>
-      The size of buffer for use in sequence files. The size of this buffer should
-      probably be a multiple of hardware page size (4096 on Intel x86), and it
-      determines how much data is buffered during read and write operations.
-    </description>
-  </property>
+	<!-- PROPERTIES ADDED DURING IReS INSTALLATION -->
+	<property>
+		<name>io.compression.codecs</name>
+		<value>org.apache.hadoop.io.compress.GzipCodec</value>
+		<description>
+		A comma-separated list of the compression codec classes that can be used
+		for compression/decompression. In addition to any classes specified with
+		this property (which take precedence), codec classes on the classpath are
+		discovered using a Java ServiceLoader.
+		</description>
+	</property>
+	<property>
+		<name>io.file.buffer.size</name>
+		<value>131072</value>
+		<description>
+		The size of buffer for use in sequence files. The size of this buffer should
+		probably be a multiple of hardware page size (4096 on Intel x86), and it
+		determines how much data is buffered during read and write operations.
+		</description>
+	</property>
+	<!-- IReS PROPERTIES ENDED-->
 </configuration>

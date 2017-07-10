@@ -22,13 +22,14 @@ import java.io.IOException;
 import gr.ntua.cslab.asap.rest.beans.OperatorDictionary;
 import gr.ntua.cslab.asap.rest.beans.WorkflowDictionary;
 import gr.ntua.cslab.asap.workflow.AbstractWorkflow1;
+import gr.ntua.cslab.asap.workflow.MultObjAbstractWorkflow;
 
 public class TransformWorkflows {
 
-	public static AbstractWorkflow1 tranformAbstractWorkflow(String name, String dir, WorkflowDictionary workflow) throws IOException {
-		
+	public static MultObjAbstractWorkflow tranformAbstractWorkflow(String name, String dir, WorkflowDictionary workflow) throws IOException {
 
-		AbstractWorkflow1 ret = new AbstractWorkflow1(name, dir+"/"+name);
+
+		MultObjAbstractWorkflow ret = new MultObjAbstractWorkflow(name, dir+"/"+name);
 		String graph="", targets="";
 		for(OperatorDictionary op: workflow.getOperators()){
 			if(op.getIsOperator().equals("true") && op.getIsAbstract().equals("true"))

@@ -1,2 +1,0 @@
-\copy nation from 'nation_small_strip.tbl' with delimiter as '|';
-\copy customer from 'customer_small_strip.tbl' with delimiter as '|';

@@ -52,7 +52,7 @@ public class ClusterNodes extends Configured implements Runnable {
 
 	//define how often the check will be run
 	//by default the period is 3 seconds
-	public static int period = 5000;
+	public static int period = 500000;
 	//the process that will be returned after checking each service running status
 	Process p = null;
 	//a BufferedReader to read check's output
@@ -256,7 +256,7 @@ public class ClusterNodes extends Configured implements Runnable {
 				ycinfo = yc.getNodeReports();
 				if( ycinfo != null){
 					yciter = ycinfo.listIterator();
-					//RunningWorkflowLibrary.nodes.clear();
+					RunningWorkflowLibrary.nodes.clear();
 					while( yciter.hasNext()){
 						nr = yciter.next();
 						//only hosts where NodeManager is running are checked for the availability
@@ -266,7 +266,7 @@ public class ClusterNodes extends Configured implements Runnable {
 							yhosts.put( host, nr.getNodeState().toString());
 							//System.out.println( "YARN hosts: " + yhosts);
 							//update RunningWorfklowLibrary
-							//RunningWorkflowLibrary.nodes.put( host, nr.getHttpAddress().split( ":")[ 1]);	
+							RunningWorkflowLibrary.nodes.put( host, nr.getHttpAddress().split( ":")[ 1]);	
 						}
 					}
 					//System.out.println( "Nodes are : " + RunningWorkflowLibrary.nodes);
@@ -397,7 +397,7 @@ public class ClusterNodes extends Configured implements Runnable {
 				try{
 					metricsXML = YarnMetricsClient.issueRequestYarnClusterMetrics( yconf);
 					metricsXML = metricsXML.replaceAll( "<\\?[^>]+\\?>", "" );
-                    			metricsXML = metricsXML.replaceAll( "<clusterMetrics>", "");
+                    metricsXML = metricsXML.replaceAll( "<clusterMetrics>", "");
 					metricsXML = metricsXML.replaceAll( "</[^>]+>", "\n");
 					metricsXML = metricsXML.replaceAll( "[<]+", "");
 					metricsXML = metricsXML.replaceAll( "[>]+", " ");

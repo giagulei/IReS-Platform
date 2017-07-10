@@ -1,4 +1,4 @@
-crawlDocuments,TF_IDF
+imrSmall0.04,TF_IDF
 TF_IDF,d1
 d1,k-Means
 k-Means,d2

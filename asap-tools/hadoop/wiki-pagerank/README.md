@@ -1,1 +1,0 @@
---Pageranking wikipedia xml data
