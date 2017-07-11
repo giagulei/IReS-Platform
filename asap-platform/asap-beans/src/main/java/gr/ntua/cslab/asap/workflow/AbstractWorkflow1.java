@@ -55,7 +55,7 @@ public class AbstractWorkflow1 {
 	public String name, directory;
 	private static Logger logger = Logger.getLogger(AbstractWorkflow1.class.getName());
 
-	private HashMap<String, WorkflowNode> materilizedDatasets;
+	protected HashMap<String, WorkflowNode> materilizedDatasets;
 	public HashMap<String,String> groupInputs;
 	public String optimizationFunction;
 	public String functionTarget;
@@ -98,7 +98,7 @@ public class AbstractWorkflow1 {
 		OperatorLibrary.moveid=0;
 		parsePolicy(policy);
 		String fullName=name+"_"+nameExtention;
-		MObjMaterializedWorkflow materializedWorkflow = new MObjMaterializedWorkflow(fullName, MaterializedWorkflowLibrary.getWorkflowDirectory()+"/"+fullName);
+		MaterializedWorkflow1 materializedWorkflow = new MaterializedWorkflow1(fullName, MaterializedWorkflowLibrary.getWorkflowDirectory()+"/"+fullName);
 		materializedWorkflow.count = this.count;
 		if(materilizedDatasets!=null)
 			materializedWorkflow.materilizedDatasets=materilizedDatasets;

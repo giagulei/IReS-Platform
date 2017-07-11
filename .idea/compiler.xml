@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="asap-beans" />
+        <module name="asap-client" />
+        <module name="asap-server" />
+        <module name="kitten-client" />
+        <module name="kitten-common" />
+        <module name="kitten-master" />
+        <module name="maven-archiver (1)" />
+        <module name="maven-archiver (2)" />
+        <module name="maven-archiver (3)" />
+        <module name="maven-archiver (4)" />
+        <module name="maven-archiver (5)" />
+        <module name="maven-archiver (6)" />
+        <module name="maven-archiver (7)" />
+        <module name="maven-archiver (8)" />
+        <module name="maven-archiver (9)" />
+        <module name="panic-client" />
+        <module name="panic-core" />
+        <module name="panic-server" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="asap" target="1.5" />
+      <module name="asap-beans" target="1.7" />
+      <module name="asap-client" target="1.7" />
+      <module name="asap-server" target="1.7" />
+      <module name="kitten-client" target="1.6" />
+      <module name="kitten-common" target="1.6" />
+      <module name="kitten-java" target="1.5" />
+      <module name="kitten-master" target="1.6" />
+      <module name="kitten-project" target="1.5" />
+      <module name="maven-archiver (1)" target="1.5" />
+      <module name="maven-archiver (2)" target="1.5" />
+      <module name="maven-archiver (3)" target="1.5" />
+      <module name="maven-archiver (4)" target="1.5" />
+      <module name="maven-archiver (5)" target="1.5" />
+      <module name="maven-archiver (6)" target="1.5" />
+      <module name="maven-archiver (7)" target="1.5" />
+      <module name="maven-archiver (8)" target="1.5" />
+      <module name="maven-archiver (9)" target="1.5" />
+      <module name="panic" target="1.5" />
+      <module name="panic-client" target="1.7" />
+      <module name="panic-core" target="1.7" />
+      <module name="panic-server" target="1.7" />
+    </bytecodeTargetLevel>
+  </component>
+</project>

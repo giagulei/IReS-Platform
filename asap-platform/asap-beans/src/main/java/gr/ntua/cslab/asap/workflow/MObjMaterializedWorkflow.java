@@ -10,6 +10,8 @@ public class MObjMaterializedWorkflow extends MaterializedWorkflow1 {
     private MultObjAbstractWorkflow abstractWorkflow;
 
     public HashMap<String, String> optimizationMetrics;
+    public HashMap<String, Double> optimalCosts;
+
 
 
     public MObjMaterializedWorkflow(String name, String directory) {
@@ -19,6 +21,7 @@ public class MObjMaterializedWorkflow extends MaterializedWorkflow1 {
     public void setPolicy(HashMap<String, String> groupInputs, HashMap<String, String> optimizationFunctions) {
         this.groupInputs = groupInputs;
         this.optimizationMetrics = optimizationFunctions;
+        optimalCosts = new HashMap<>();
     }
 
     public MultObjAbstractWorkflow getAbstractWorkflow() {

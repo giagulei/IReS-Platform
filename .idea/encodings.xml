@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/asap-platform/asap-beans" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/asap-platform/asap-client" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/asap-platform/asap-server" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/cloudera-kitten" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/cloudera-kitten/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/cloudera-kitten/java/client" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/cloudera-kitten/java/common" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/cloudera-kitten/java/master" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/panic" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/panic/panic-client" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/panic/panic-core" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/panic/panic-server" charset="UTF-8" />
+  </component>
+</project>

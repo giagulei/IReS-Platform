@@ -29,13 +29,8 @@ import gr.ntua.ece.cslab.panic.core.containers.beans.InputSpacePoint;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Random;
 
 import net.sourceforge.jeval.EvaluationException;
 import net.sourceforge.jeval.Evaluator;
@@ -47,6 +42,8 @@ import weka.core.Attribute;
 public class WorkflowNode implements Comparable<WorkflowNode>{
 	private String abstractName;
 
+
+	public Set<Integer> parents;
 	// giag=================
 
 //	private HashMap<String, Double> metrics;
@@ -119,15 +116,6 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 //		}
 	}
 
-	public List<WorkflowNode> materialize(MaterializedWorkflow1 materializedWorkflow,
-										  String fromName) throws Exception {
-
-		logger.info("Processing : " + toStringNorecursive()+" from name: "+fromName);
-		List<WorkflowNode> ret = new ArrayList<WorkflowNode>();
-		List<List<WorkflowNode>> materializedInputs = new ArrayList<List<WorkflowNode>>();
-
-		return ret;
-	}
 
 	public List<WorkflowNode> materialize(MaterializedWorkflow1 materializedWorkflow,
 										  Workflow1DPTable dpTable, String fromName) throws Exception {
@@ -236,12 +224,16 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 								inputMatches=true;
 								tempInputNode.setAbstractName(in.getName());
 								tempInputNode.addInput(in);
-								if(materializedWorkflow.functionTarget.contains("min") && dpTable.getCost(in.dataset)<=operatorOneInputCost){
+								if(materializedWorkflow.functionTarget.contains("min")
+										&& dpTable.getCost(in.dataset)<=operatorOneInputCost){
+
 									operatorOneInputCost=dpTable.getCost(in.dataset);
 									oneInputMetrics = dpTable.getMetrics(in.dataset);
 									bestInput = in;
 								}
-								if(materializedWorkflow.functionTarget.contains("max") && dpTable.getCost(in.dataset)>=operatorOneInputCost){
+								if(materializedWorkflow.functionTarget.contains("max")
+										&& dpTable.getCost(in.dataset)>=operatorOneInputCost){
+
 									operatorOneInputCost=dpTable.getCost(in.dataset);
 									oneInputMetrics = dpTable.getMetrics(in.dataset);
 									bestInput = in;
@@ -546,7 +538,8 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		this.execTime=execTime;
 	}
 
-	protected Double computePolicyFunction(HashMap<String,Double> metrics, String function) throws NumberFormatException, EvaluationException {
+	protected Double computePolicyFunction(HashMap<String,Double> metrics, String function)
+			throws NumberFormatException, EvaluationException {
 		//System.out.println("Computing function "+ metrics);
 
 		Evaluator evaluator = new Evaluator();

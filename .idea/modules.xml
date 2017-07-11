@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/asap-platform/asap.iml" filepath="$PROJECT_DIR$/asap-platform/asap.iml" />
+      <module fileurl="file://$PROJECT_DIR$/asap-platform/asap-beans/asap-beans.iml" filepath="$PROJECT_DIR$/asap-platform/asap-beans/asap-beans.iml" />
+      <module fileurl="file://$PROJECT_DIR$/asap-platform/asap-client/asap-client.iml" filepath="$PROJECT_DIR$/asap-platform/asap-client/asap-client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/asap-platform/asap-server/asap-server.iml" filepath="$PROJECT_DIR$/asap-platform/asap-server/asap-server.iml" />
+      <module fileurl="file://$PROJECT_DIR$/cloudera-kitten/java/client/kitten-client.iml" filepath="$PROJECT_DIR$/cloudera-kitten/java/client/kitten-client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/cloudera-kitten/java/common/kitten-common.iml" filepath="$PROJECT_DIR$/cloudera-kitten/java/common/kitten-common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/cloudera-kitten/java/kitten-java.iml" filepath="$PROJECT_DIR$/cloudera-kitten/java/kitten-java.iml" />
+      <module fileurl="file://$PROJECT_DIR$/cloudera-kitten/java/master/kitten-master.iml" filepath="$PROJECT_DIR$/cloudera-kitten/java/master/kitten-master.iml" />
+      <module fileurl="file://$PROJECT_DIR$/cloudera-kitten/kitten-project.iml" filepath="$PROJECT_DIR$/cloudera-kitten/kitten-project.iml" />
+      <module fileurl="file://$PROJECT_DIR$/asap-platform/asap-beans/target/maven-archiver/maven-archiver (1).iml" filepath="$PROJECT_DIR$/asap-platform/asap-beans/target/maven-archiver/maven-archiver (1).iml" />
+      <module fileurl="file://$PROJECT_DIR$/asap-platform/asap-client/target/maven-archiver/maven-archiver (2).iml" filepath="$PROJECT_DIR$/asap-platform/asap-client/target/maven-archiver/maven-archiver (2).iml" />
+      <module fileurl="file://$PROJECT_DIR$/asap-platform/asap-server/target/maven-archiver/maven-archiver (3).iml" filepath="$PROJECT_DIR$/asap-platform/asap-server/target/maven-archiver/maven-archiver (3).iml" />
+      <module fileurl="file://$PROJECT_DIR$/cloudera-kitten/java/client/target/maven-archiver/maven-archiver (4).iml" filepath="$PROJECT_DIR$/cloudera-kitten/java/client/target/maven-archiver/maven-archiver (4).iml" />
+      <module fileurl="file://$PROJECT_DIR$/cloudera-kitten/java/common/target/maven-archiver/maven-archiver (5).iml" filepath="$PROJECT_DIR$/cloudera-kitten/java/common/target/maven-archiver/maven-archiver (5).iml" />
+      <module fileurl="file://$PROJECT_DIR$/cloudera-kitten/java/master/target/maven-archiver/maven-archiver (6).iml" filepath="$PROJECT_DIR$/cloudera-kitten/java/master/target/maven-archiver/maven-archiver (6).iml" />
+      <module fileurl="file://$PROJECT_DIR$/panic/panic-client/target/maven-archiver/maven-archiver (7).iml" filepath="$PROJECT_DIR$/panic/panic-client/target/maven-archiver/maven-archiver (7).iml" />
+      <module fileurl="file://$PROJECT_DIR$/panic/panic-core/target/maven-archiver/maven-archiver (8).iml" filepath="$PROJECT_DIR$/panic/panic-core/target/maven-archiver/maven-archiver (8).iml" />
+      <module fileurl="file://$PROJECT_DIR$/panic/panic-server/target/maven-archiver/maven-archiver (9).iml" filepath="$PROJECT_DIR$/panic/panic-server/target/maven-archiver/maven-archiver (9).iml" />
+      <module fileurl="file://$PROJECT_DIR$/panic/panic.iml" filepath="$PROJECT_DIR$/panic/panic.iml" />
+      <module fileurl="file://$PROJECT_DIR$/panic/panic-client/panic-client.iml" filepath="$PROJECT_DIR$/panic/panic-client/panic-client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/panic/panic-core/panic-core.iml" filepath="$PROJECT_DIR$/panic/panic-core/panic-core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/panic/panic-server/panic-server.iml" filepath="$PROJECT_DIR$/panic/panic-server/panic-server.iml" />
+    </modules>
+  </component>
+</project>
