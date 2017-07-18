@@ -46,7 +46,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 	public Set<Integer> parents;
 	// giag=================
 
-//	private HashMap<String, Double> metrics;
+	private HashMap<Integer, Double> optimalMetrics;
 
 	//======================
 
@@ -71,7 +71,14 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		visited=false;
 		optimalCost=0.0;
 		execTime=0.0;
+		optimalMetrics = new HashMap<>();
 	}
+
+	public void setOptimalMetrics(HashMap<Integer, Double> optimalMetrics){
+		this.optimalMetrics = optimalMetrics;
+	}
+
+	public HashMap<Integer, Double> getOptimalMetrics(){ return optimalMetrics;}
 
 	public String getAbstractName() {
 		return abstractName;

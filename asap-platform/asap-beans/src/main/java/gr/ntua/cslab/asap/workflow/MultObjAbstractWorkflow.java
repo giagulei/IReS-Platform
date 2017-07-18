@@ -1,5 +1,6 @@
 package gr.ntua.cslab.asap.workflow;
 
+import gr.ntua.cslab.asap.operators.Operator;
 import gr.ntua.cslab.asap.staticLibraries.MaterializedWorkflowLibrary;
 import gr.ntua.cslab.asap.staticLibraries.OperatorLibrary;
 
@@ -8,6 +9,8 @@ import java.util.logging.Logger;
 
 import org.moeaframework.Executor;
 import org.moeaframework.core.NondominatedPopulation;
+import org.moeaframework.core.Solution;
+import org.moeaframework.core.variable.EncodingUtils;
 
 
 /**
@@ -78,27 +81,56 @@ public class MultObjAbstractWorkflow extends AbstractWorkflow1{
         }
         //==========================================
 
+        int metricIndex = 0;
+        HashMap<String, Integer> objectives = new HashMap<>();
+        for(String objectiveMetric : optimizationFunctions.keySet()){
+            objectives.put(objectiveMetric, metricIndex);
+            metricIndex++;
+        }
 
+        MultiObjectivePlanning.objectives = objectives;
         MultiObjectivePlanning.initialNodes = moeaOperatorGraph;
-        int times = 1000;
+        try {
+            MultiObjectivePlanning.findMaterializedOperators();
+        } catch (Exception e) {
+            logger.info("Error when tries to find materialized operators");
+            e.printStackTrace();
+        }
+        MultiObjectivePlanning.optimizationFunctions = optimizationFunctions;
+        int times = 10;
         NondominatedPopulation result = new Executor()
                                          .withProblemClass(MultiObjectivePlanning.class)
                                          .withAlgorithm("NSGAII")
-                                         .withProperty("populationSize", 200) //max pareto plans
+                                         .withProperty("populationSize", 5) //max pareto plans
                                          .withMaxEvaluations(times)
                                          .run();
 
+        //============== Print all discovered Pareto plans ============================================
 
-        WorkflowNode temp = null;
-        Double bestCost = 0.0;
-        Double tempCost = 0.0;
-        List<WorkflowNode> bestPlan=null;
+        for (int i = 0; i < result.size(); i++) {
+            Solution pareto = result.get(i);
+            int[] mapping = EncodingUtils.getInt(pareto);
+            logger.info("Pareto plan "+i);
+            for(Map.Entry<Integer, WorkflowNode> oper : moeaOperatorGraph.entrySet()){
+                Operator op = MultiObjectivePlanning.materializedOperators.get(mapping[oper.getKey()]);
+                logger.info(op.getEngine()+" selected for "+moeaOperatorGraph.get(oper.getKey()).getName());
+            }
+        }
 
+        //================ Always return first solution for materialization =============================
+        List<WorkflowNode> bestPlan = new ArrayList<>();
+        Solution pareto = result.get(0);
+        int[] mapping = EncodingUtils.getInt(pareto);
+        for(Map.Entry<Integer, WorkflowNode> oper : moeaOperatorGraph.entrySet()){
+            Operator op = MultiObjectivePlanning.materializedOperators.get(mapping[oper.getKey()]);
+            WorkflowNode planNode = new WorkflowNode(true, false,
+                    moeaOperatorGraph.get(oper.getKey()).getAbstractName());
+            planNode.setOperator(op);
+            bestPlan.add(planNode);
+        }
 
-//        List<AbstractOperator> workflowOperators = new ArrayList<>();
-//        for(WorkflowNode t : targets){
-//            generateDAG(t, workflowOperators);
-//        }
+        materializedWorkflow.setBestPlan(targets.get(0).toStringNorecursive(), bestPlan);
+
 
         return materializedWorkflow;
     }// end of AbstractWorkflow1 materialize
