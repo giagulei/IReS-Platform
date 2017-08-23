@@ -128,7 +128,7 @@ public class AbstractWorkflow1 {
 			 * 				- MAX_PARETO_PLANS
 			 */
 
-		int NUM_GENERATIONS = 1000;
+		int NUM_GENERATIONS = 100;
 		int MAX_PARET0_PLANS = 10;
 
 		String fullName = name + "_" + nameExtention;
@@ -163,6 +163,8 @@ public class AbstractWorkflow1 {
 		NSGAIIPlanning.functionTarget = functionTarget;
 		NSGAIIPlanning.materializedWorkflow = materializedWorkflow;
 		NSGAIIPlanning.permittedMaterializations = new HashMap<>();
+		NSGAIIPlanning.solutionMap = new HashMap<>();
+
 		try {
 			NSGAIIPlanning.findMaterializedOperators();
 		} catch (Exception e) {
@@ -191,24 +193,16 @@ public class AbstractWorkflow1 {
 		//=============================================================================================
 
 		//================ Always return first solution for materialization =============================
-//            List<WorkflowNode> bestPlan = new ArrayList<>();
-//            Solution pareto = result.get(0);
-//            int[] mapping = EncodingUtils.getInt(pareto);
-//            for(Map.Entry<Integer, WorkflowNode> oper : moeaOperatorGraph.entrySet()){
-//                Operator op = NSGAIIPlanning.materializedOperators.get(mapping[oper.getKey()]);
-//                WorkflowNode planNode = new WorkflowNode(true, false,
-//                        moeaOperatorGraph.get(oper.getKey()).getAbstractName());
-//                planNode.setOperator(op);
-//                bestPlan.add(planNode);
-//                logger.info("Op "+planNode.operator.opName+" in plan");
-//                for(WorkflowNode inp : planNode.inputs){
-//                    logger.info("In: "+inp.dataset.datasetName);
-//                }
-//                for(WorkflowNode inp : planNode.outputs){
-//                    logger.info("Out: "+inp.dataset.datasetName);
-//                }
-//            }
-//
+            Solution pareto = result.get(0);
+			materializedWorkflow = NSGAIIPlanning.solutionMap.get(pareto);
+
+		//==== Print cost of optimal plan =============
+
+		logger.info("Final Plan Cost:");
+		for(Entry<String, Double> e : materializedWorkflow.optimalCosts.entrySet()){
+			logger.info(e.getKey()+": "+e.getValue());
+		}
+
 
 
 		return  materializedWorkflow;

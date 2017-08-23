@@ -62,7 +62,8 @@ public class MaterializedWorkflow1 {
 	public String directory;
 
 	public HashMap<String, WorkflowNode> materilizedDatasets;
-	
+
+
 	@Override
 	public String toString() {
 		return targets.toString();
@@ -255,8 +256,36 @@ public class MaterializedWorkflow1 {
 	public List<WorkflowNode> getTargets() {
 		return targets;
 	}
-	
-	
+
+	public void setPolicy(HashMap<String, String> groupInputs, String function, String functionTarget) {
+		this.groupInputs = groupInputs;
+		this.function = function;
+		this.functionTarget = functionTarget;
+	}
+
+	public void setPolicy(HashMap<String, String> groupInputs, HashMap<String, String> optimizationFunctions) {
+		this.groupInputs = groupInputs;
+		this.optimizationMetrics = optimizationFunctions;
+		optimalCosts = new HashMap<>();
+	}
+
+
+	public MaterializedWorkflow1 clone(){
+		MaterializedWorkflow1 newWorkflow = new MaterializedWorkflow1(this.name, this.directory);
+		newWorkflow.targets = new ArrayList<>(targets);
+		newWorkflow.optimalCosts = new HashMap<>(optimalCosts);
+		newWorkflow.bestPlans = new HashMap<>(bestPlans);
+		newWorkflow.materilizedDatasets = new HashMap<>(materilizedDatasets);
+		newWorkflow.optimizationMetrics = new HashMap<>(optimizationMetrics);
+		newWorkflow.nodes = new HashMap<>(nodes);
+		newWorkflow.groupInputs = new HashMap<>(groupInputs);
+		newWorkflow.function = function;
+		newWorkflow.functionTarget = functionTarget;
+		newWorkflow.count = count;
+		return newWorkflow;
+	}
+
+
 
 	public static void main(String[] args) throws Exception {
 		/*MaterializedWorkflow1 mw = new MaterializedWorkflow1();
@@ -297,17 +326,7 @@ public class MaterializedWorkflow1 {
 		System.out.println(mw);
 	}
 
-	public void setPolicy(HashMap<String, String> groupInputs, String function, String functionTarget) {
-		this.groupInputs = groupInputs;
-		this.function = function;
-		this.functionTarget = functionTarget;
-	}
 
-	public void setPolicy(HashMap<String, String> groupInputs, HashMap<String, String> optimizationFunctions) {
-		this.groupInputs = groupInputs;
-		this.optimizationMetrics = optimizationFunctions;
-		optimalCosts = new HashMap<>();
-	}
 
 	
 }

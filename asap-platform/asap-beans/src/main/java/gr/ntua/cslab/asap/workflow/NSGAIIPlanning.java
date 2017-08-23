@@ -1,7 +1,5 @@
 package gr.ntua.cslab.asap.workflow;
 
-import gr.ntua.cslab.asap.operators.AbstractOperator;
-import gr.ntua.cslab.asap.operators.Dataset;
 import gr.ntua.cslab.asap.operators.Operator;
 import gr.ntua.cslab.asap.staticLibraries.ClusterStatusLibrary;
 import gr.ntua.cslab.asap.staticLibraries.OperatorLibrary;
@@ -25,6 +23,8 @@ public class NSGAIIPlanning extends AbstractProblem {
     public static String functionTarget;
     public static HashMap<String, Integer> objectives;
     public static HashMap<String, Double> costMetrics;
+
+    public static HashMap<Solution, MaterializedWorkflow1> solutionMap;
 
     //TODO:
     //public static HashMap<String, String> optimizationFunctions;
@@ -84,6 +84,7 @@ public class NSGAIIPlanning extends AbstractProblem {
         // h domh auth mporei na einai idia me to DPTable, alla praktika to table na einai vector kai na exw ena mono
         // entry per dataset.
         Workflow1DPTable mTable = new Workflow1DPTable();
+        MaterializedWorkflow1 materialization = materializedWorkflow.clone();
 
         WorkflowNode temp = null;
         List<WorkflowNode> bestPlan = null;
@@ -93,7 +94,7 @@ public class NSGAIIPlanning extends AbstractProblem {
             logger.info("Materializing workflow node: " + t.toStringNorecursive());
             List<WorkflowNode> l = null;
             try {
-                l = t.materializeNSGAII(materializedWorkflow, mTable, t.getName(), mapping);
+                l = t.materializeNSGAII(materialization, mTable, t.getName(), mapping);
 
                 if (l != null && !l.isEmpty()) {
 
@@ -106,14 +107,14 @@ public class NSGAIIPlanning extends AbstractProblem {
                         temp = new WorkflowNode(false, false, t.getName());
                         temp.setDataset(t.dataset);
                         temp.addInputs(l);
-                        materializedWorkflow.addTarget(temp);
+                        materialization.addTarget(temp);
                     } else {
                         temp = l.get(0).inputs.get(0);
                         temp.setDataset(l.get(0).dataset);
-                        materializedWorkflow.addTarget(temp);
+                        materialization.addTarget(temp);
                     }
                     bestPlan.add(t);
-                    materializedWorkflow.setBestPlan(t.toStringNorecursive(), bestPlan);
+                    materialization.setBestPlan(t.toStringNorecursive(), bestPlan);
 
                     // edw prepei na travaw kapws ta optimal metrics
                 }else{
@@ -135,7 +136,7 @@ public class NSGAIIPlanning extends AbstractProblem {
             for(HashMap<String, Double> h : targetMetrics){
                 t1.add(h.get(m));
             }
-            String g = materializedWorkflow.groupInputs.get(m);
+            String g = materialization.groupInputs.get(m);
             Double operatorInputCost=0.0;
             if(g.contains("min")){
                 operatorInputCost=Collections.min(t1);
@@ -151,10 +152,14 @@ public class NSGAIIPlanning extends AbstractProblem {
             costMetrics.put(m, operatorInputCost);
         }
 
+        materialization.optimalCosts = costMetrics;
+
         // 8elw to max apo ta metrics pou exoun ta target datasets.
         for(Map.Entry<String, Double> objScore : costMetrics.entrySet()) {
             solution.setObjective(objectives.get(objScore.getKey()), costMetrics.get(objScore.getKey()));
         }
+
+        solutionMap.put(solution, materialization);
     }
 
 
