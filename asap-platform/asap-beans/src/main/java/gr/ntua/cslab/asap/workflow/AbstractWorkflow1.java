@@ -27,26 +27,24 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Random;
 import java.util.logging.Logger;
 
 //import net.sourceforge.jeval.EvaluationException;
 //import net.sourceforge.jeval.Evaluator;
+import gr.ntua.cslab.asap.operators.*;
 import gr.ntua.cslab.asap.staticLibraries.AbstractOperatorLibrary;
 import gr.ntua.cslab.asap.staticLibraries.DatasetLibrary;
 import gr.ntua.cslab.asap.staticLibraries.MaterializedWorkflowLibrary;
 import gr.ntua.cslab.asap.staticLibraries.OperatorLibrary;
-import gr.ntua.cslab.asap.operators.AbstractOperator;
-import gr.ntua.cslab.asap.operators.Dataset;
-import gr.ntua.cslab.asap.operators.MaterializedOperators;
-import gr.ntua.cslab.asap.operators.NodeName;
-import gr.ntua.cslab.asap.operators.Operator;
 import gr.ntua.cslab.asap.rest.beans.OperatorDictionary;
 import gr.ntua.cslab.asap.rest.beans.WorkflowDictionary;
+import org.apache.commons.collections.map.HashedMap;
+import org.moeaframework.Executor;
+import org.moeaframework.core.NondominatedPopulation;
+import org.moeaframework.core.Solution;
+import org.moeaframework.core.variable.EncodingUtils;
 
 public class AbstractWorkflow1 {
 	protected List<WorkflowNode> targets;
@@ -62,6 +60,14 @@ public class AbstractWorkflow1 {
 	protected String policy;
 	protected int count;
 
+	//===========================
+	// gmytil - multiobjective
+	// TODO: gia thn wra upo8etw koino function kai den to xrhsimopoiw
+	// target metric functions. Key: function name, Value: Optimization function
+	// example:
+	//      key: execTime, value: min
+	public HashMap<String, String> optimizationFunctions;
+
 	@Override
 	public String toString() {
 		return targets.toString();
@@ -73,6 +79,7 @@ public class AbstractWorkflow1 {
 		targets = new ArrayList<WorkflowNode>();
 		workflowNodes = new HashMap<String, WorkflowNode>();
 		materilizedDatasets = new HashMap<String, WorkflowNode>();
+		optimizationFunctions = new HashMap<>();
 	}
 
 	public AbstractWorkflow1(String name, String directory) {
@@ -80,6 +87,7 @@ public class AbstractWorkflow1 {
 		this.name=name;
 		targets = new ArrayList<WorkflowNode>();
 		workflowNodes = new HashMap<String, WorkflowNode>();
+		optimizationFunctions = new HashMap<>();
 	}
 
 	public void addTarget(WorkflowNode target) {
@@ -95,6 +103,119 @@ public class AbstractWorkflow1 {
 	}
 
 	public MaterializedWorkflow1 materialize(String nameExtention, String policy) throws Exception {
+		logger.info("POUUUUUUUUTSES");
+
+		OperatorLibrary.moveid = 0;
+		parseGeneralPolicy(policy);
+		MaterializedWorkflow1 materializedWorkflow = null;
+
+		if (optimizationFunctions.size() <= 1) {
+			logger.info("Single objective optimization");
+			materializedWorkflow = dpMaterialize(nameExtention, policy);
+		} else {
+			materializedWorkflow = NSGAIIMaterialize(nameExtention, policy);
+
+		}// end of AbstractWorkflow1 materialize
+		return materializedWorkflow;
+	}
+
+	public MaterializedWorkflow1 NSGAIIMaterialize(String nameExtention, String policy) throws Exception {
+		logger.info("Multi objective optimization -- NSGA-II algorithm using MOEA framework");
+
+			/*
+			 * NSGA-II is a genetic algorithm, the performance of which is tuned by two parameters:
+			 * 				- NUM_GENERATIONS
+			 * 				- MAX_PARETO_PLANS
+			 */
+
+		int NUM_GENERATIONS = 1000;
+		int MAX_PARET0_PLANS = 10;
+
+		String fullName = name + "_" + nameExtention;
+		MaterializedWorkflow1 materializedWorkflow = new MaterializedWorkflow1(fullName,
+				MaterializedWorkflowLibrary.getWorkflowDirectory() + "/" + fullName);
+
+		materializedWorkflow.count = this.count;
+
+		if (materilizedDatasets != null)
+			materializedWorkflow.materilizedDatasets = materilizedDatasets;
+		else
+			materializedWorkflow.materilizedDatasets = new HashMap<>();
+
+		materializedWorkflow.setAbstractWorkflow(this);
+		//TODO: kataxrhstika gia twra. 8a prepei na allaksei to policy
+		materializedWorkflow.setPolicy(groupInputs, optimizationFunction, functionTarget);
+
+		Map<Integer, WorkflowNode> operators = findOperators(workflowNodes);
+
+		// Initializing NSGA-II evaluation structs for the problem
+		NSGAIIPlanning.costMetrics = new HashMap<>();
+		NSGAIIPlanning.objectives = new HashMap<>();
+		int objectiveIndex = 0;
+		for(String metric : optimizationFunctions.keySet()){
+			NSGAIIPlanning.objectives.put(metric, objectiveIndex);
+			NSGAIIPlanning.costMetrics.put(metric, 0.0);
+			objectiveIndex++;
+		}
+		NSGAIIPlanning.operators = operators;
+		NSGAIIPlanning.abstractWorkflow = workflowNodes;
+		NSGAIIPlanning.targets = targets;
+		NSGAIIPlanning.functionTarget = functionTarget;
+		NSGAIIPlanning.materializedWorkflow = materializedWorkflow;
+		NSGAIIPlanning.permittedMaterializations = new HashMap<>();
+		try {
+			NSGAIIPlanning.findMaterializedOperators();
+		} catch (Exception e) {
+			logger.info("Error when tries to find materialized operators");
+			e.printStackTrace();
+		}
+
+		NondominatedPopulation result = new Executor()
+				.withProblemClass(NSGAIIPlanning.class)
+				.withAlgorithm("NSGAII")
+				.withProperty("populationSize", MAX_PARET0_PLANS) //max pareto plans
+				.withMaxEvaluations(NUM_GENERATIONS)
+				.run();
+
+		//============== Print all discovered Pareto plans ============================================
+
+		for (int i = 0; i < result.size(); i++) {
+			Solution pareto = result.get(i);
+			int[] mapping = EncodingUtils.getInt(pareto);
+			logger.info("Pareto plan "+i);
+			for(Map.Entry<Integer, WorkflowNode> oper : operators.entrySet()){
+				Operator op = NSGAIIPlanning.materializedOperators.get(mapping[oper.getKey()]);
+				logger.info(op.getEngine()+" selected for "+operators.get(oper.getKey()).getName());
+			}
+		}
+		//=============================================================================================
+
+		//================ Always return first solution for materialization =============================
+//            List<WorkflowNode> bestPlan = new ArrayList<>();
+//            Solution pareto = result.get(0);
+//            int[] mapping = EncodingUtils.getInt(pareto);
+//            for(Map.Entry<Integer, WorkflowNode> oper : moeaOperatorGraph.entrySet()){
+//                Operator op = NSGAIIPlanning.materializedOperators.get(mapping[oper.getKey()]);
+//                WorkflowNode planNode = new WorkflowNode(true, false,
+//                        moeaOperatorGraph.get(oper.getKey()).getAbstractName());
+//                planNode.setOperator(op);
+//                bestPlan.add(planNode);
+//                logger.info("Op "+planNode.operator.opName+" in plan");
+//                for(WorkflowNode inp : planNode.inputs){
+//                    logger.info("In: "+inp.dataset.datasetName);
+//                }
+//                for(WorkflowNode inp : planNode.outputs){
+//                    logger.info("Out: "+inp.dataset.datasetName);
+//                }
+//            }
+//
+
+
+		return  materializedWorkflow;
+	}
+
+
+	public MaterializedWorkflow1 dpMaterialize(String nameExtention, String policy) throws Exception {
 		OperatorLibrary.moveid=0;
 		parsePolicy(policy);
 		String fullName=name+"_"+nameExtention;
@@ -106,6 +227,7 @@ public class AbstractWorkflow1 {
 			materializedWorkflow.materilizedDatasets=new HashMap<>();
 		materializedWorkflow.setAbstractWorkflow(this);
 		materializedWorkflow.setPolicy(groupInputs, optimizationFunction, functionTarget);
+
 		Workflow1DPTable dpTable = new Workflow1DPTable();
 		WorkflowNode temp = null;
 		Double bestCost = 0.0;
@@ -171,6 +293,7 @@ public class AbstractWorkflow1 {
 	}// end of AbstractWorkflow1 materialize
 
 
+
 	public MaterializedWorkflow1 replan( HashMap<String, WorkflowNode> materilizedDatasets, int count) throws Exception {
 		this.materilizedDatasets=materilizedDatasets;
 		this.count =count;
@@ -196,6 +319,24 @@ public class AbstractWorkflow1 {
 		}
 		return optimizationFunction;
 		//System.out.println(functionTarget);
+	}
+
+	public void parseGeneralPolicy(String policy) {
+		this.policy=policy;
+		groupInputs = new HashMap<>();
+		String[] p = policy.split("\n");
+		for (int i = 0; i < p.length; i++) {
+			String[] p1 = p[i].split(",");
+			if(p1[0].equals("groupInputs")){
+				groupInputs.put(p1[1], p1[2]);
+			}
+			else if(p1[0].equals("function")){
+				//TODO: kataxrhstika gia twra. genika to functionTarget kai to optimizationFunction den exei logo na meinei edw
+				optimizationFunction=p1[1];
+				functionTarget=p1[2];
+				optimizationFunctions.put(p1[1], p1[2]);
+			}
+		}
 	}
 
 	public static String getPolicyFromString(String policy) {
@@ -512,6 +653,27 @@ public class AbstractWorkflow1 {
     	}
 		return ret;
 	}
+
+	/**
+     * Takes as input the abstract workflow, it indexes the operators of the workflow by assigning a unique ID to each
+     * of them and returns a map of the operators indexed by the assigned IDs
+     *
+     * @param abstractWorkflow The abstract workflow of the job including both datasets and operators
+     * @return a map with the operators of the workflow
+     */
+    public Map<Integer, WorkflowNode> findOperators(HashMap<String,WorkflowNode> abstractWorkflow){
+        Map<Integer, WorkflowNode> operators = new HashedMap();
+        int opIndex = 0;
+        for(Map.Entry<String, WorkflowNode> e : abstractWorkflow.entrySet()){
+            if(e.getValue().isOperator) {
+                e.getValue().setID(opIndex);
+                operators.put(opIndex, e.getValue());
+                opIndex++;
+            }
+        }
+        return operators;
+    }
+
 
 
 	public static void main(String[] args) throws Exception{

@@ -43,6 +43,11 @@ import org.apache.log4j.Logger;
 
 public class MaterializedWorkflow1 {
 
+	//================
+	public HashMap<String, String> optimizationMetrics;
+	public HashMap<String, Double> optimalCosts;
+	//================
+
 	private AbstractWorkflow1 abstractWorkflow;
 	private List<WorkflowNode> targets;
 	public HashMap<String,List<WorkflowNode>> bestPlans;
@@ -72,6 +77,9 @@ public class MaterializedWorkflow1 {
 		count=0;
 		nodes = new HashMap<String, WorkflowNode>();
 		materilizedDatasets = new HashMap<String, WorkflowNode>();
+		//=============================
+		optimalCosts = new HashMap<>();
+		optimizationMetrics = new HashMap<>();
 	}
 
 	public AbstractWorkflow1 getAbstractWorkflow() {
@@ -295,9 +303,11 @@ public class MaterializedWorkflow1 {
 		this.functionTarget = functionTarget;
 	}
 
+	public void setPolicy(HashMap<String, String> groupInputs, HashMap<String, String> optimizationFunctions) {
+		this.groupInputs = groupInputs;
+		this.optimizationMetrics = optimizationFunctions;
+		optimalCosts = new HashMap<>();
+	}
 
-
-
-	
 	
 }

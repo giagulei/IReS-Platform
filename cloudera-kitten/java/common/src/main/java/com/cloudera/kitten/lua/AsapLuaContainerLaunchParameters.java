@@ -70,23 +70,23 @@ public class AsapLuaContainerLaunchParameters implements ContainerLaunchParamete
 	private String execScript;
 	private int globalContainerId;
 	
-	private MObjMaterializedWorkflow workflow;
+	private MaterializedWorkflow1 workflow;
 	
 	private OperatorDictionary operatorDictionary;
 	private WorkflowNode operator;
 	
 	private String opName;
 
-  public AsapLuaContainerLaunchParameters(LuaValue lv, String name, Configuration conf, Map<String, URI> localFileUris, MObjMaterializedWorkflow workflow, String opName) throws IOException {
+  public AsapLuaContainerLaunchParameters(LuaValue lv, String name, Configuration conf, Map<String, URI> localFileUris, MaterializedWorkflow1 workflow, String opName) throws IOException {
     this(new LuaWrapper(lv.checktable()), name, conf, localFileUris, new Extras(),workflow, opName);
   }
   
-  public AsapLuaContainerLaunchParameters(LuaWrapper lv, String name, Configuration conf, Map<String, URI> localFileUris, MObjMaterializedWorkflow workflow, String opName) throws IOException {
+  public AsapLuaContainerLaunchParameters(LuaWrapper lv, String name, Configuration conf, Map<String, URI> localFileUris, MaterializedWorkflow1 workflow, String opName) throws IOException {
     this(lv, name, conf, localFileUris, new Extras(),workflow, opName);
   }
   
   public AsapLuaContainerLaunchParameters(LuaWrapper lv, String name, Configuration conf,
-      Map<String, URI> localFileUris, Extras extras, MObjMaterializedWorkflow workflow, String opName) throws IOException {
+      Map<String, URI> localFileUris, Extras extras, MaterializedWorkflow1 workflow, String opName) throws IOException {
 	  	this.name=name;
 	    this.lv = lv;
 	    this.conf = conf;

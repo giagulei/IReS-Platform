@@ -24,8 +24,8 @@ import gr.ntua.cslab.asap.rest.beans.OperatorDictionary;
 import gr.ntua.cslab.asap.rest.beans.WorkflowDictionary;
 import gr.ntua.cslab.asap.staticLibraries.OperatorLibrary;
 import gr.ntua.cslab.asap.utils.Utils;
-import gr.ntua.cslab.asap.workflow.MObjMaterializedWorkflow;
-import gr.ntua.cslab.asap.workflow.MultObjAbstractWorkflow;
+import gr.ntua.cslab.asap.workflow.AbstractWorkflow1;
+import gr.ntua.cslab.asap.workflow.MaterializedWorkflow1;
 import gr.ntua.cslab.asap.workflow.WorkflowNode;
 
 import java.io.File;
@@ -59,7 +59,7 @@ import com.cloudera.kitten.util.LocalDataHelper;
 public class RunningWorkflowLibrary {
 	private static ConcurrentHashMap<String,WorkflowDictionary> runningWorkflows;
 	private static ConcurrentHashMap<String,WorkflowDictionary> toRunWorkflows;
-	private static ConcurrentHashMap<String,MultObjAbstractWorkflow> runningAbstractWorkflows;
+	private static ConcurrentHashMap<String,AbstractWorkflow1> runningAbstractWorkflows;
 	private static ConcurrentHashMap<String,YarnClientService> runningServices;
 	public static ConcurrentHashMap<String,ApplicationReport> workflowsReport;
 	public static ConcurrentHashMap<String, String> nodes;
@@ -137,7 +137,7 @@ public class RunningWorkflowLibrary {
 		return new ArrayList<String>(runningWorkflows.keySet());
 	}
 
-	public static String executeWorkflow(MObjMaterializedWorkflow materializedWorkflow) throws Exception {
+	public static String executeWorkflow(MaterializedWorkflow1 materializedWorkflow) throws Exception {
 		runningAbstractWorkflows.put(materializedWorkflow.name, materializedWorkflow.getAbstractWorkflow());
 		WorkflowDictionary wd = materializedWorkflow.toWorkflowDictionary("\n");
 		for(OperatorDictionary op : wd.getOperators()){
@@ -151,7 +151,7 @@ public class RunningWorkflowLibrary {
 		return materializedWorkflow.name;
 	}
 
-	private static YarnClientService startYarnClientService(WorkflowDictionary d, MObjMaterializedWorkflow mw) throws Exception {
+	private static YarnClientService startYarnClientService(WorkflowDictionary d, MaterializedWorkflow1 mw) throws Exception {
 	    YarnClientService service = null;
 		HashMap<String,String> operators = new HashMap<String, String>();
 		HashMap<String,String> inputDatasets = new HashMap<String, String>();
@@ -291,12 +291,12 @@ public class RunningWorkflowLibrary {
 		HashMap<String,WorkflowNode> materializedDatasets = new HashMap<String,WorkflowNode>();
 		WorkflowNode dataset_node = null;
 		Dataset temp = null;
-		MultObjAbstractWorkflow aw = null;
+		AbstractWorkflow1 aw = null;
 		WorkflowDictionary replanned_workflow = null;
 		List< String> sorted_nodes = new ArrayList< String>();
 		
 		WorkflowDictionary wd = runningWorkflows.get(id);
-		MObjMaterializedWorkflow materialiazedWorkflow = new MObjMaterializedWorkflow(id, "/tmp");
+		MaterializedWorkflow1 materialiazedWorkflow = new MaterializedWorkflow1(id, "/tmp");
 		materialiazedWorkflow.readFromWorkflowDictionary(wd);
 		for(OperatorDictionary op : wd.getOperators()){
 			if(op.getIsOperator().equals("false") && op.getIsAbstract().equals("false") && op.getStatus().equals("completed")){
@@ -349,7 +349,7 @@ public class RunningWorkflowLibrary {
 	 * @param sn					the reduced set of materialized inputs for which to search for an alternative plan
 	 * @return WorkflowDictionary	the alternative execution path
 	 */
-	private static WorkflowDictionary trimReplannedWorkflow( HashMap< String, WorkflowNode> materializedDatasets, MultObjAbstractWorkflow aw, List< String> sn) throws Exception{
+	private static WorkflowDictionary trimReplannedWorkflow( HashMap< String, WorkflowNode> materializedDatasets, AbstractWorkflow1 aw, List< String> sn) throws Exception{
 		List< String> failed_operators = new ArrayList< String>();
 
 		/*

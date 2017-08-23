@@ -22,8 +22,7 @@ import gr.ntua.cslab.asap.staticLibraries.MaterializedWorkflowLibrary;
 import gr.ntua.cslab.asap.staticLibraries.OperatorLibrary;
 import gr.ntua.cslab.asap.daemon.rest.TransformWorkflows;
 import gr.ntua.cslab.asap.operators.Operator;
-import gr.ntua.cslab.asap.workflow.MObjMaterializedWorkflow;
-import gr.ntua.cslab.asap.workflow.MultObjAbstractWorkflow;
+import gr.ntua.cslab.asap.workflow.AbstractWorkflow1;
 import gr.ntua.cslab.asap.workflow.MaterializedWorkflow1;
 import gr.ntua.cslab.asap.workflow.WorkflowNode;
 
@@ -45,19 +44,19 @@ import net.sourceforge.jeval.EvaluationException;
 import org.apache.log4j.Logger;
 
 public class AbstractWorkflowLibrary {
-	private static HashMap<String,MultObjAbstractWorkflow> abstractWorkflows;
+	private static HashMap<String,AbstractWorkflow1> abstractWorkflows;
 	private static String workflowDirectory;
 
 	public static void initialize(String directory) throws IOException{
 		workflowDirectory = directory;
-		abstractWorkflows = new HashMap<String, MultObjAbstractWorkflow>();
+		abstractWorkflows = new HashMap<String, AbstractWorkflow1>();
 		File folder = new File(directory);
 		File[] listOfFiles = folder.listFiles();
 
 		for (int i = 0; i < listOfFiles.length; i++) {
 			if (listOfFiles[i].isDirectory()) {
 		        Logger.getLogger(OperatorLibrary.class.getName()).info("Loading abstract workflow: " + listOfFiles[i].getName());
-		        MultObjAbstractWorkflow w = new MultObjAbstractWorkflow(listOfFiles[i].getName(), listOfFiles[i].getPath());
+				AbstractWorkflow1 w = new AbstractWorkflow1(listOfFiles[i].getName(), listOfFiles[i].getPath());
 		        w.readFromDir(listOfFiles[i].getPath());
 		        abstractWorkflows.put(listOfFiles[i].getName(), w);
 		    }
@@ -74,8 +73,8 @@ public class AbstractWorkflowLibrary {
 
 	public static String getMaterializedWorkflow(String workflowName, String policy, String parameters) throws Exception {
 		Properties params =parseParameters(parameters);
-		
-		MultObjAbstractWorkflow aw = abstractWorkflows.get(workflowName);
+
+		AbstractWorkflow1 aw = abstractWorkflows.get(workflowName);
 		for(Entry<Object, Object> e: params.entrySet()){
 			String k = (String) e.getKey();
 			String v = (String) e.getValue();
@@ -95,7 +94,7 @@ public class AbstractWorkflowLibrary {
 		Date date = new Date();
 		Long start = System.currentTimeMillis();
 
-		MObjMaterializedWorkflow mw = aw.materialize(dateFormat.format(date), policy);
+		MaterializedWorkflow1 mw = aw.materialize(dateFormat.format(date), policy);
 		Long stop = System.currentTimeMillis();
 		
 
@@ -135,40 +134,40 @@ public class AbstractWorkflowLibrary {
 	}
 
 	public static String getGraphDescription(String workflowName) throws IOException {
-		MultObjAbstractWorkflow aw = abstractWorkflows.get(workflowName);
+		AbstractWorkflow1 aw = abstractWorkflows.get(workflowName);
 		return aw.graphToString();
 	}
 
 
 	public static void refresh(String workflowName) {
-		MultObjAbstractWorkflow aw = abstractWorkflows.get(workflowName);
+		AbstractWorkflow1 aw = abstractWorkflows.get(workflowName);
 		aw.refresh();
 	}
 	
 	public static void changeWorkflow(String workflowName, String workflowGraph) throws IOException {
-		MultObjAbstractWorkflow aw = abstractWorkflows.get(workflowName);
+		AbstractWorkflow1 aw = abstractWorkflows.get(workflowName);
 		aw.changeEdges(workflowGraph);
 		
 	}
 	
 	public static void newWorkflow(String workflowName) {
-		MultObjAbstractWorkflow aw = new MultObjAbstractWorkflow(workflowName, workflowDirectory+"/"+workflowName);
+		AbstractWorkflow1 aw = new AbstractWorkflow1(workflowName, workflowDirectory+"/"+workflowName);
 		abstractWorkflows.put(workflowName, aw);
 	}
 
 	public static void addNode(String workflowName, String type, String name) {
-		MultObjAbstractWorkflow aw = abstractWorkflows.get(workflowName);
+		AbstractWorkflow1 aw = abstractWorkflows.get(workflowName);
 		aw.addNode(type, name);
 	}
 
 	public static void removeNode(String workflowName, String type, String name) {
-		MultObjAbstractWorkflow aw = abstractWorkflows.get(workflowName);
+		AbstractWorkflow1 aw = abstractWorkflows.get(workflowName);
 		aw.removeNode(type, name);
 	}
 
 	public static void addWorkflow(String workflowName, WorkflowDictionary workflow) throws IOException {
-		
-		MultObjAbstractWorkflow w = TransformWorkflows.tranformAbstractWorkflow(workflowName, workflowDirectory, workflow);
+
+		AbstractWorkflow1 w = TransformWorkflows.tranformAbstractWorkflow(workflowName, workflowDirectory, workflow);
 		
 		abstractWorkflows.put(workflowName, w);
 	}

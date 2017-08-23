@@ -72,7 +72,7 @@ public class WorkflowParameters implements ApplicationMasterParameters {
 	private int clientPort = 0;
 	private String trackingUrl = "";
 	public WorkflowDictionary workflow;
-	public MObjMaterializedWorkflow materializedWorkflow;
+	public MaterializedWorkflow1 materializedWorkflow;
 	public String jobName;
 
   public WorkflowParameters(Configuration conf) throws Exception{
@@ -108,7 +108,7 @@ public class WorkflowParameters implements ApplicationMasterParameters {
 	workflow = Utils.unmarshall(script);
 	workflow.setName( jobName);
 	
-	materializedWorkflow = new MObjMaterializedWorkflow( jobName, "/tmp");
+	materializedWorkflow = new MaterializedWorkflow1( jobName, "/tmp");
 	materializedWorkflow.readFromWorkflowDictionary(workflow);
 	LOG.info(materializedWorkflow.getTargets().get(0).toStringRecursive());
 	
@@ -160,7 +160,7 @@ public class WorkflowParameters implements ApplicationMasterParameters {
   		FileSystem fs = FileSystem.get( conf);
   		File f = null;
   		
-  		materializedWorkflow = new MObjMaterializedWorkflow( this.jobName, "/tmp");
+  		materializedWorkflow = new MaterializedWorkflow1( this.jobName, "/tmp");
   		materializedWorkflow.readFromWorkflowDictionary( workflow);
   		//LOG.info(materializedWorkflow.getTargets().get(0).toStringRecursive());
   		

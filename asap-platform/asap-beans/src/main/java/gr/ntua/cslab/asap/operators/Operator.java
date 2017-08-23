@@ -833,7 +833,9 @@ public class Operator {
 		logger.info("Model selected: "+ model.getClass());
 		return model
 	}*/
-	public HashMap<String, Double> getOptimalPolicyCost(HashMap<String, Double> inputMetrics, List<WorkflowNode> inputs, String policy) throws Exception {
+	public HashMap<String, Double> getOptimalPolicyCost(HashMap<String, Double> inputMetrics,
+														List<WorkflowNode> inputs, String policy) throws Exception {
+
 		logger.info("Input metrics: " + inputMetrics);
 		HashMap<String, Double> retMetrics = new HashMap<String, Double>();
 		//generate Input space point
@@ -894,7 +896,8 @@ public class Operator {
 		
 		in.setValues(values);
 		if(missing){
-			OutputSpacePoint out = OptimizeMissingMetrics.findOptimalPointCheckAllSamples(models, in, policy, optree, this);
+			OutputSpacePoint out = OptimizeMissingMetrics.findOptimalPointCheckAllSamples(models, in, policy,
+					optree, this);
 			retMetrics.putAll(out.getOutputPoints());
 		}
 		else{
