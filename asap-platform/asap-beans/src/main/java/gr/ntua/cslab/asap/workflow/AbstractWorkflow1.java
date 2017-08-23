@@ -103,7 +103,6 @@ public class AbstractWorkflow1 {
 	}
 
 	public MaterializedWorkflow1 materialize(String nameExtention, String policy) throws Exception {
-		logger.info("POUUUUUUUUTSES");
 
 		OperatorLibrary.moveid = 0;
 		parseGeneralPolicy(policy);
