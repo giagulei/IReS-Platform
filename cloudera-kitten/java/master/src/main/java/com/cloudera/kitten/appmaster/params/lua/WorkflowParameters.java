@@ -17,7 +17,6 @@ package com.cloudera.kitten.appmaster.params.lua;
 import gr.ntua.cslab.asap.rest.beans.OperatorDictionary;
 import gr.ntua.cslab.asap.rest.beans.WorkflowDictionary;
 import gr.ntua.cslab.asap.utils.Utils;
-import gr.ntua.cslab.asap.workflow.MObjMaterializedWorkflow;
 import gr.ntua.cslab.asap.workflow.MaterializedWorkflow1;
 
 import java.io.BufferedReader;
