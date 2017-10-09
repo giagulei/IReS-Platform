@@ -156,7 +156,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		}
 
 		for(WorkflowNode in : inputs){
-			//logger.info( toStringNorecursive() + " has inputs: " + inputs);
+			//logger.info( toStringNorecursive() + " has inputs: " + inputs);
 			//logger.info( "Input WorkflowNode: " + in);
 			List<WorkflowNode> l = in.materialize(materializedWorkflow,dpTable,getName());
 			materializedInputs.add(l);
@@ -536,6 +536,358 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		logger.info( "Processed : " + toStringNorecursive());
 		return ret;
 	}//end of materialize
+
+
+	public List<List<WorkflowNode>> retrievePlans(Operator op,
+												  List<List<WorkflowNode>> materializedInputs, Workflow1DPTable dpTable){
+		List<List<WorkflowNode>> plans = new ArrayList<>();
+		int inputs = Integer.parseInt(op.getParameter("Constraints.Input.number"));
+		for(int i = 0; i < inputs; i++ ){
+			for(WorkflowNode in : materializedInputs.get(i)){
+				plans.add(dpTable.getPlan(in.dataset));
+			}
+		}
+		return plans;
+	}
+
+	public boolean iterateInputs(MaterializedWorkflow1 materializedWorkflow, Workflow1DPTable dpTable, String fromName,
+							  int inputID, Operator op, List<List<WorkflowNode>> materializedInputs,
+							  List<List<WorkflowNode>> plans, List<WorkflowNode> bestInputs,
+							  List<HashMap<String,Double>> minCostsForInput, List<WorkflowNode> ret) throws Exception {
+
+		WorkflowNode temp = new WorkflowNode(true, false,"");
+		temp.setOperator(op);
+		int inputs = Integer.parseInt(op.getParameter("Constraints.Input.number"));
+
+		if(inputID >= inputs){
+			// At this point of the recursion, all inputs match.
+			logger.info("all inputs match");
+			int i =0;
+			for(WorkflowNode bin : bestInputs){
+				WorkflowNode tin = temp.inputs.get(i);
+				logger.info("copy path from: "+bin.getName()+" to "+tin.getName());
+				if(bin.isOperator){
+					//move
+					bin.operator.copyExecVariables(tin.dataset,0,bin.inputs);
+				}
+				else{
+					bin.dataset.copyExecVariables(tin.dataset,0);
+					bin.dataset.copyOptimization(tin.dataset);
+				}
+				i++;
+			}
+
+			Double prevCost = 0.0;
+			Double optCost	= 0.0;
+			HashMap<String,Double> nextMetrics = null;
+			HashMap<String,Double> bestInputMetrics = new HashMap<String, Double>();
+
+			if( !minCostsForInput.isEmpty()){
+				for(String m : minCostsForInput.get(0).keySet()){
+					List<Double> t1 = new ArrayList<Double>();
+					for(HashMap<String, Double> h : minCostsForInput){
+						t1.add(h.get(m));
+					}
+					Collections.sort(t1);
+					//System.out.println(m+": "+t1);
+					//System.out.println(minCostsForInput);
+					String g = materializedWorkflow.groupInputs.get(m);
+					//System.out.println(g);
+					Double operatorInputCost=0.0;
+					if(g.contains("min")){
+						operatorInputCost=t1.get(0);
+					}
+					else if(g.contains("max")){
+						operatorInputCost=t1.get(t1.size()-1);
+					}
+					else if(g.contains("sum")){
+						for(Double d : t1){
+							operatorInputCost+=d;
+						}
+					}
+					bestInputMetrics.put(m, operatorInputCost);
+				}
+			}
+			else{
+				logger.info( "Processing kind of generator operator and"
+						+ " thus input metrics are set manually");
+				bestInputMetrics.put( "execTime", temp.getCost());
+				bestInputs = new ArrayList< WorkflowNode>();
+			}
+			prevCost 	= computePolicyFunction(bestInputMetrics, materializedWorkflow.function);
+			nextMetrics = op.getOptimalPolicyCost(bestInputMetrics, bestInputs, materializedWorkflow.function);
+
+			optCost = computePolicyFunction(nextMetrics, materializedWorkflow.function);
+
+			temp.setExecTime(nextMetrics.get("execTime")-bestInputMetrics.get("execTime"));
+			temp.setOptimalCost(optCost-prevCost);
+
+			for(Entry<String, Double> e : nextMetrics.entrySet()){
+				if(bestInputMetrics.containsKey(e.getKey())){
+					bestInputMetrics.put(e.getKey(),e.getValue());
+				}
+			}
+			plan.add(temp);
+			int outN=0;
+			WorkflowNode tempOutputNode = null;
+			Dataset tempOutput = null;
+			logger.info( "Outputs are: " + outputs);
+			for (WorkflowNode out : outputs) {
+				tempOutputNode = new WorkflowNode(false, false,"");
+				tempOutput = new Dataset("t"+materializedWorkflow.count);
+				materializedWorkflow.count++;
+				logger.info( "Call outputFor() for operator: " + op.opName);
+				logger.info( "with tempOutput: " + tempOutput);
+				logger.info( "outN: " + outN);
+				logger.info( "nextMetrics: " + nextMetrics);
+				logger.info( "temp.inputs: " + temp.inputs);
+				try{
+					op.outputFor(tempOutput, outN, nextMetrics, temp.inputs);
+				}
+				catch( NullPointerException npe){
+					logger.info( "ERROR: For operator " + op.opName + " there is a");
+					logger.info( "mismatch between the Constraints.Output and");
+					logger.info( "Execution.Output properties inside its description");
+					logger.info( "file. Or maybe, these properties match between them");
+					logger.info( "but they may have a mismatch with the graph file");
+					logger.info( "of the workflow where this operator belongs, e.g. from");
+					logger.info( "the graph file the operatos has x outputs but in the");
+					logger.info( "description file y outputs where declared.");
+				}
+				tempOutputNode.setDataset(tempOutput);
+				tempOutputNode.addInput(temp);
+				logger.info( "out.getName(): " + out.getName() + " fromName: " + fromName);
+				if(out.getName().equals(fromName)){
+					ret.add(tempOutputNode);
+					plan.add(tempOutputNode);
+					dpTable.addRecord(tempOutput, plan, optCost, bestInputMetrics);
+				}
+				else{
+					out.inputs.add(tempOutputNode);
+					ArrayList<WorkflowNode> tp = new ArrayList<>();
+					tp.add(tempOutputNode);
+					//System.out.println(nextMetrics);
+					HashMap<String,Double> metrics = new HashMap<String, Double>();
+					for(String m : materializedWorkflow.groupInputs.keySet()){
+						metrics.put(m, 0.0);
+					}
+					dpTable.addRecord(tempOutput, tp, new Double(0), metrics);
+					dpTable.addInputs(out.dataset, tp);
+				}
+				outN++;
+			}
+			return true;
+		}
+
+
+		for (int i = inputID; i < inputs; i++) {
+			Dataset tempInput = new Dataset("t"+materializedWorkflow.count);
+			materializedWorkflow.count++;
+			tempInput.inputFor(op,i);
+			WorkflowNode tempInputNode = new WorkflowNode(false, false,"");
+			tempInputNode.setDataset(tempInput);
+			temp.addInput(tempInputNode);
+
+			boolean inputMatches=false;
+
+			HashMap<String,Double> oneInputMetrics = null;
+			logger.info( "materializedInputs: " + materializedInputs);
+			for(WorkflowNode in : materializedInputs.get(i)){
+				logger.info("CHECKING INPUT DATASET: "+in.dataset.datasetName);
+
+				if( tempInput.checkMatch(in.dataset)){
+					inputMatches=true;
+					tempInputNode.setAbstractName(in.getName());
+					tempInputNode.addInput(in);
+					oneInputMetrics = dpTable.getMetrics(in.dataset);
+					for(List<WorkflowNode> plan: plans){
+						plan.add(tempInputNode);
+					}
+					bestInputs.add(tempInputNode);
+					minCostsForInput.add(oneInputMetrics);
+					if(!iterateInputs(materializedWorkflow, dpTable, fromName, inputID+1, op, materializedInputs,
+							plans, bestInputs, minCostsForInput, ret)){
+						return false;
+					}
+
+				}
+				else{
+					//check move
+					logger.info( "materializedInputs.size(): " + materializedInputs.size());
+					logger.info( "materializedInputs.get("+i+").size(): " + materializedInputs.get(i).size());
+					//generic move
+					logger.info("Check move ");
+					List<Operator> moveOps = OperatorLibrary.checkMove(in.dataset, tempInput);
+					logger.info( "Move operators: " + moveOps);
+					if(!moveOps.isEmpty()){
+						logger.info("Are there any available move operators? True");
+						inputMatches=true;
+						for(Operator m : moveOps){
+							WorkflowNode moveNode = new WorkflowNode(true, false,"");
+							moveNode.setOperator(m);
+							logger.info( "Move node " + moveNode.getName() + " added input:\t" + in);
+							//logger.info( "dataset tree " + in.dataset.datasetTree);
+							moveNode.addInput(in);
+							List<WorkflowNode> lin= new ArrayList<WorkflowNode>();
+							lin.add(in);
+							tempInputNode.addInput(moveNode);
+							HashMap<String, Double> prevMetrics = dpTable.getMetrics(in.dataset);
+							Double prevCost = computePolicyFunction(prevMetrics, materializedWorkflow.function);
+							HashMap<String,Double> nextMetrics = m.getOptimalPolicyCost(prevMetrics, lin, materializedWorkflow.function);
+
+							m.generateOptimizationMetrics(tempInput, 0, nextMetrics);
+
+							Double optCost = computePolicyFunction(nextMetrics, materializedWorkflow.function);
+							moveNode.setOptimalCost(optCost-prevCost);
+
+							moveNode.setExecTime(nextMetrics.get("execTime")-prevMetrics.get("execTime"));
+							Double tempCost = dpTable.getCost(in.dataset)+moveNode.getCost();
+
+							oneInputMetrics = new HashMap<String, Double>();
+							for(Entry<String, Double> e : nextMetrics.entrySet()){
+								if(prevMetrics.containsKey(e.getKey())){
+									oneInputMetrics.put(e.getKey(),e.getValue());
+								}
+							}
+
+							for(List<WorkflowNode> plan: plans){
+								//plan.addAll(dpTable.getPlan(moveNode.inputs.get(0).dataset));
+								plan.add(moveNode);
+								plan.add(tempInputNode);
+							}
+
+							bestInputs.add(moveNode);
+							minCostsForInput.add(oneInputMetrics);
+							if (!iterateInputs(materializedWorkflow, dpTable, fromName, inputID+1, op,
+									materializedInputs, plans, bestInputs, minCostsForInput, ret)){
+								return false;
+							}
+						}
+					}
+					else{
+						logger.info( "ERROR: For operator " + op.opName + " there "
+								+ " is an input mismatch.\n 1. Check inside its"
+								+ " description file if all properties Constraints.Input"
+								+ " for some input x match with all the corresponding"
+								+ " properties of the input dataset x, probably a"
+								+ " materialized one, like the very first input( s)"
+								+ " of the workflow.\n 2. Check if an appropriate move"
+								+ " operator has been defined correctly.\n This message should be taken"
+								+ " as a real error when the materialization seems"
+								+ " to succeed when pushing 'Materialize Workflow'"
+								+ " button but the workflow is not displayed at all.");
+						logger.info( "Input dataset: " + in.dataset);
+						logger.info( "Input to be matched: " + tempInput);
+					}
+				}
+			}
+			if(!inputMatches){
+				return false;
+			}
+		}
+	}
+
+
+	public List<WorkflowNode> materializeExghaustive(MaterializedWorkflow1 materializedWorkflow,
+										  Workflow1DPTable dpTable, String fromName) throws Exception {
+
+		logger.info("Processing : " + toStringNorecursive()+" from name: "+fromName);
+		List<WorkflowNode> ret = new ArrayList<WorkflowNode>();
+		List<List<WorkflowNode>> materializedInputs = new ArrayList<List<WorkflowNode>>();
+		WorkflowNode temp = null;
+		if(!isOperator){
+			List<WorkflowNode> p = dpTable.getPlan(dataset);
+			logger.info( toStringNorecursive() + " has as p: " + p);
+			if(p!=null){
+				ret.addAll(p);
+				return ret;
+			}
+		}
+
+		//check if intermediate results exist (replan)
+		if( !isOperator){
+			temp = materializedWorkflow.materilizedDatasets.get(getName());
+			if(temp!=null){
+				logger.info("Found existing dataset : " + toStringNorecursive());
+				//logger.info( "Dataset Tree: " + temp.dataset.datasetTree);
+				ret.add(temp);
+				List<WorkflowNode> plan = new ArrayList<WorkflowNode>();
+				plan.add(temp);
+				HashMap<String,Double> metrics = new HashMap<String, Double>();
+				for(String m : materializedWorkflow.groupInputs.keySet()){
+					metrics.put(m, 0.0);
+				}
+				dpTable.addRecord(temp.dataset, plan, temp.computePolicyFunction(metrics,
+						materializedWorkflow.function),metrics);
+				return ret;
+			}
+		}
+
+		for(WorkflowNode in : inputs){
+			List<WorkflowNode> l = in.materialize(materializedWorkflow,dpTable,getName());
+			materializedInputs.add(l);
+		}
+		logger.info( "Materialized inputs: " + materializedInputs);
+		if(isOperator){
+			if(isAbstract){
+				List<Operator> operators = OperatorLibrary.getMatches(abstractOperator);
+				//logger.info( "For abstract operator " + abstractOperator.opName + " the available"
+				//			 + " operator implementations are:\n " + operators);
+				for(Operator op : operators){
+					if(!ClusterStatusLibrary.checkEngineStatus(op)){
+						logger.info( "Specified engine for operator " + op.opName + " is " + op.getEngine());
+						logger.info( "and it is not running. For this, this operator will not be materialized");
+						logger.info( "and consequently the corresponding workflow will not be materialized");
+						logger.info( "if alternatives do not exist for the relative abstract operator.");
+						continue;
+					}
+					List<HashMap<String,Double>> minCostsForInput = new ArrayList<HashMap<String,Double>>();
+					logger.info("Materialized operator: " + op.opName);
+					List<WorkflowNode> bestInputs = new ArrayList<WorkflowNode>();
+					//TODO: recursively iterate inputs
+					List<List<WorkflowNode>> existingPlans = retrievePlans(op, materializedInputs, dpTable);
+
+					//iterate inputs
+					// gia ka8e apotelesma, materialize to ret
+
+				}
+			}//end of if operator is abstract
+			else{
+
+			}
+		}//end of if WorkflowNode is operator
+		else{
+			if(isAbstract){
+				for(List<WorkflowNode> l : materializedInputs){
+					for(WorkflowNode tl : l){
+						tl.setAbstractName(getName());
+					}
+					ret.addAll(l);
+				}
+				dpTable.addRecord(dataset, ret, new Double(0), new HashMap<String,Double>());
+			}
+			else{
+				temp = new WorkflowNode(false, false, getName());
+				temp.setDataset(dataset);
+				for(List<WorkflowNode> l : materializedInputs){
+					temp.addInputs(l);
+				}
+				ret.add(temp);
+
+				List<WorkflowNode> plan = new ArrayList<WorkflowNode>();
+				plan.add(temp);
+				HashMap<String,Double> metrics = new HashMap<String, Double>();
+				for(String m : materializedWorkflow.groupInputs.keySet()){
+					metrics.put(m, 0.0);
+				}
+				dpTable.addRecord(dataset, plan, computePolicyFunction(metrics, materializedWorkflow.function),metrics);
+			}
+		}//end of else WorkflowNode is dataset
+		logger.info( "Processed : " + toStringNorecursive());
+		return ret;
+	}//end of materialize
+
+
 
 
 	public List<WorkflowNode> materializeNSGAII(MaterializedWorkflow1 materializedWorkflow,
