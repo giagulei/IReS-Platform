@@ -21,6 +21,7 @@ import gr.ntua.cslab.asap.operators.Dataset;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 public class Workflow1DPTable {
@@ -28,10 +29,16 @@ public class Workflow1DPTable {
 	private HashMap<Dataset,Double> dpCost;
 	private HashMap<Dataset,HashMap<String,Double>> dpMetrics;
 
+	HashSet<List<WorkflowNode>> planEnumeration;
+	HashMap<List<WorkflowNode>,HashMap<String,Double>> planCosts;
+
+
 	public Workflow1DPTable() {
 		dpTable = new HashMap<Dataset,List<WorkflowNode>>();
 		dpCost = new HashMap<Dataset,Double>();
 		dpMetrics = new HashMap<Dataset, HashMap<String,Double>>();
+		planEnumeration = new HashSet<>();
+		planCosts = new HashMap<>();
 	}
 
 	public void addInputs(Dataset dataset, ArrayList<WorkflowNode> plan) {
