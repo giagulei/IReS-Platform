@@ -108,6 +108,36 @@ public class AbstractWorkflow1 {
 		parseGeneralPolicy(policy);
 		MaterializedWorkflow1 materializedWorkflow = null;
 
+
+		//=======================================================
+		logger.info("Exhaustive materialization...");
+		String fullName=name+"_"+nameExtention;
+		materializedWorkflow = new MaterializedWorkflow1(fullName,
+				MaterializedWorkflowLibrary.getWorkflowDirectory()+"/"+fullName);
+		materializedWorkflow.count = this.count;
+		if(materilizedDatasets!=null)
+			materializedWorkflow.materilizedDatasets=materilizedDatasets;
+		else
+			materializedWorkflow.materilizedDatasets=new HashMap<>();
+		materializedWorkflow.setAbstractWorkflow(this);
+		materializedWorkflow.setPolicy(groupInputs, optimizationFunction, functionTarget);
+		Workflow1DPTable dpTable = new Workflow1DPTable();
+		logger.info("Initiated!!");
+		for(WorkflowNode t : targets) {
+			logger.info("Materializing workflow node: " + t.toStringNorecursive());
+			List<WorkflowNode> l = t.materializeExhaustive(materializedWorkflow, dpTable, t.getName());
+			logger.info("Candidate Plans: ");
+			for(WorkflowNode r : l){
+				logger.info("Plan for dataset: "+r.toStringNorecursive());
+				//List<List<WorkflowNode>> candidatePlans = dpTable.eTable.get(r.dataset);
+				List<WorkflowNode> cplan = dpTable.getPlan(r.dataset);
+				String planString = "";
+				for(WorkflowNode w: cplan) planString += w.toStringNorecursive()+" ";
+				logger.info(planString);
+			}
+		}
+		//=========================================================
+
 		if (optimizationFunctions.size() <= 1) {
 			logger.info("Single objective optimization");
 			materializedWorkflow = dpMaterialize(nameExtention, policy);

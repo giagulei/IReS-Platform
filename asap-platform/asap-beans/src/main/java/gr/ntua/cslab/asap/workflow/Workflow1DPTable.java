@@ -29,16 +29,15 @@ public class Workflow1DPTable {
 	private HashMap<Dataset,Double> dpCost;
 	private HashMap<Dataset,HashMap<String,Double>> dpMetrics;
 
-	HashSet<List<WorkflowNode>> planEnumeration;
-	HashMap<List<WorkflowNode>,HashMap<String,Double>> planCosts;
-
+//	HashMap<Dataset, List<List<WorkflowNode>>> eTable;
+//	HashMap<Dataset, List<HashMap<String,Double>>> eMetrics;
 
 	public Workflow1DPTable() {
 		dpTable = new HashMap<Dataset,List<WorkflowNode>>();
 		dpCost = new HashMap<Dataset,Double>();
 		dpMetrics = new HashMap<Dataset, HashMap<String,Double>>();
-		planEnumeration = new HashSet<>();
-		planCosts = new HashMap<>();
+//		eTable = new HashMap<>();
+//		eMetrics = new HashMap<>();
 	}
 
 	public void addInputs(Dataset dataset, ArrayList<WorkflowNode> plan) {
