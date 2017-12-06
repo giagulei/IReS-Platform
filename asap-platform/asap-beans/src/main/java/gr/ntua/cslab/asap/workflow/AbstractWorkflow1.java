@@ -134,6 +134,12 @@ public class AbstractWorkflow1 {
 				String planString = "";
 				for(WorkflowNode w: cplan) planString += w.toStringNorecursive()+" ";
 				logger.info(planString);
+				HashMap<String, Double> finalMetrics = dpTable.getMetrics(r.dataset);
+				String metricsString="";
+				for(Entry<String, Double> m : finalMetrics.entrySet()){
+					metricsString+=m.getKey()+"  "+m.getValue()+"\n";
+				}
+				logger.info(metricsString);
 			}
 		}
 		//=========================================================
