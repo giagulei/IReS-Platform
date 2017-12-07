@@ -137,7 +137,7 @@ public class AbstractWorkflow1 {
 				HashMap<String, Double> finalMetrics = dpTable.getMetrics(r.dataset);
 				String metricsString="";
 				for(Entry<String, Double> m : finalMetrics.entrySet()){
-					metricsString+=m.getKey()+"  "+m.getValue()+"\n";
+					metricsString+=m.getKey()+"  "+m.getValue()+" => ";
 				}
 				logger.info(metricsString);
 			}

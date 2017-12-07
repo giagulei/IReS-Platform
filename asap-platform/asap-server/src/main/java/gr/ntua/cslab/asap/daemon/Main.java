@@ -34,6 +34,7 @@ import java.util.logging.Logger;
 import java.lang.Runnable;
 import java.lang.Thread;
 
+import gr.ntua.cslab.asap.testMaterialization.TestMaterialization;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
@@ -221,7 +222,8 @@ public class Main {
 
         ServerStaticComponents.server.start();
         Logger.getLogger(Main.class.getName()).info("Server is started");
-
+        TestMaterialization.execute("/home/giagulei/Downloads/PegasusWorkflows/bin/graph2/linear_4_0.xml",
+                "", 2);
         checkServicesStatus();
     }
 }

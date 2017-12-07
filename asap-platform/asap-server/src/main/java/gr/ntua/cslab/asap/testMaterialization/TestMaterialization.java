@@ -19,21 +19,24 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
 public class TestMaterialization {
-	static int count = 0;
+	static int operatorCount = 0;
+	static int datasetCount = 0;
 	static HashMap<Integer,WorkflowNode> operators = new HashMap<>();
+	static Random r = new Random(System.currentTimeMillis());
 	public static double execute(String path, String testCase, int matches) throws Exception {
 		
 		String policy ="metrics,cost,execTime\n"+
 				"groupInputs,execTime,max\n"+
 				"groupInputs,cost,sum\n"+
 				"function,execTime,min";
-		AbstractWorkflow1 workflow = new AbstractWorkflow1("test");
+		AbstractWorkflow1 workflow = new AbstractWorkflow1("testPegasus");
 		XMLReaderFactory xmlRFactory = new XMLReaderFactory(path);
 		Hashtable<Integer, Object> nodes = xmlRFactory.getReader("job").readData(); 
 		nodes = xmlRFactory.getReader("graphnode").readData(nodes); 
@@ -54,10 +57,11 @@ public class TestMaterialization {
 			WorkflowNode tempOp = operators.get(e.getKey());
 			//add inputs
 			if(n.getParents().size()==0){
-				Dataset d = new Dataset("hdfs_file_"+count);
-				d.readPropertiesFromFile(new File("/local/npapa/asap-server/asapLibrary/datasets/hdfs_file"));
-				WorkflowNode t = new WorkflowNode(false,false,"hdfs_file_"+count);
-				count++;
+				Dataset d = new Dataset("hdfs_file_"+datasetCount);
+				d.readPropertiesFromFile(new File("/home/giagulei/git/giagos_asap/" +
+						"IReS-Platform/asap-platform/asap-server/target/asapLibrary/datasets/hdfs_file"));
+				WorkflowNode t = new WorkflowNode(false,false,"hdfs_file_"+datasetCount);
+				datasetCount++;
 				t.setDataset(d);
 				tempOp.addInput(0,t);
 				t.addOutput(0,tempOp);
@@ -73,7 +77,9 @@ public class TestMaterialization {
 					d.addOutput(0,tempOp);
 					
 					tempOp.addInput(i,d);
+
 					parentOp.addOutput(parentOp.outputs.size(),d);
+
 					i++;
 				}
 			}
@@ -98,10 +104,12 @@ public class TestMaterialization {
 	} 
 	
 	public static WorkflowNode createDataset() throws IOException{
-		Dataset d = new Dataset("d"+count);
-		WorkflowNode t = new WorkflowNode(false,true,"d"+count);
+		Dataset d = new Dataset("d"+datasetCount);
+		d.add("Constraints.Engine.FS","HDFS");
+		d.add("Execution.path","hdfs:///user/root/amazon_data"+r.nextInt(1000));
+		WorkflowNode t = new WorkflowNode(false,true,"d"+datasetCount);
 		t.setDataset(d);
-		count++;
+		datasetCount++;
 		return t;
 	}
 	
@@ -110,33 +118,54 @@ public class TestMaterialization {
 			inputs=1;
 		if(outputs==0)
 			outputs=1;
-		
-		AbstractOperator aop = new AbstractOperator("testop"+count);
+
+		AbstractOperator aop = new AbstractOperator("testop"+operatorCount);
 		aop.add("Constraints.Input.number", inputs+"");
 		aop.add("Constraints.Output.number", outputs+"");
-		aop.add("Constraints.OpSpecification.Algorithm.name", "testop");
+		aop.add("Constraints.OpSpecification.Algorithm.name", "testop"+operatorCount);
+
 		
-		WorkflowNode ret = new WorkflowNode(true,true,"testop"+count);
+		WorkflowNode ret = new WorkflowNode(true,true,"testop"+operatorCount);
 		ret.setAbstractOperator(aop);
-		count++;
+		operatorCount++;
 		return ret;
 	}
 	
-	public static void createMaterializedOps(int inputs, int outputs, int matches,AbstractOperator checkOp) throws Exception{
+	public static void createMaterializedOps(int inputs, int outputs, int matches, AbstractOperator checkOp) throws Exception{
 		if(inputs==0)
 			inputs=1;
 		if(outputs==0)
 			outputs=1;
-		
-		if(OperatorLibrary.getMatches(checkOp).size()>0)
-			return;
+
+
+//		if(OperatorLibrary.getMatches(checkOp).size()>0)
+//			return;
 		
 		for (int i = 0; i < matches; i++) {
-			Operator op = new Operator("testop_"+inputs+"_"+outputs+"_"+i, "");
-			op.readPropertiesFromStream(new FileInputStream(new File("/local/npapa/asap-server/asapLibrary/operators/testop/description")));
+			Operator op = new Operator(checkOp.opName+"_"+inputs+"_"+outputs+"_"+i, "");
+			//Operator op = new Operator("testop_"+inputs+"_"+outputs+"_"+i, "");
+//			op.readPropertiesFromStream(new FileInputStream(new File("/home/giagulei/git/giagos_asap/" +
+//					"IReS-Platform/asap-platform/asap-server/target/asapLibrary/operators/testop/description")));
+
+			op.add("Constraints.Engine", "Spark");
+			op.add("Constraints.OpSpecification.Algorithm.name", checkOp.opName);
 			op.add("Constraints.Input.number", inputs+"");
 			op.add("Constraints.Output.number", outputs+"");
-			op.configureModel();	
+
+			op.add("Optimization.model.execTime", "gr.ntua.ece.cslab.panic.core.models.UserFunction");
+			op.add("Optimization.model.cost", "gr.ntua.ece.cslab.panic.core.models.UserFunction");
+			op.add("Optimization.outputSpace.cost", "Double");
+			op.add("Optimization.outputSpace.execTime", "Double");
+			op.add("Optimization.cost", (r.nextDouble()*1000)+"");
+			op.add("Optimization.execTime", (r.nextDouble()*1000)+"");
+
+			op.add("Execution.Arguments.number", "1");
+			for(int j=0; j < inputs; j++){
+				//op.add("Execution.Output"+j+".name", "kitsos_"+checkOp.opName+"_"+j);
+				op.add("Execution.Output"+j+".path", "hdfs://lalala/kitsos_"+checkOp.opName+"_"+j);
+			}
+
+			op.configureModel();
 			
 			OperatorLibrary.add(op);
 		}

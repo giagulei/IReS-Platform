@@ -82,6 +82,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		w.optimalMetrics = cloneMetrics(optimalMetrics);
 		if(!isOperator) {
 			Dataset ndata = new Dataset(dataset.datasetName);
+			//ndata.copyOptimization(dataset);
 			ndata.datasetTree = dataset.datasetTree;
 			w.dataset = ndata;
 		}else{

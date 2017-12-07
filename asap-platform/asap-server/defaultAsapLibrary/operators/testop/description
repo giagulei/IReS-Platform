@@ -1,0 +1,3 @@
+Constraints.Engine=Spark
+Optimization.model.execTime=gr.ntua.ece.cslab.panic.core.models.UserFunction
+Optimization.model.cost=gr.ntua.ece.cslab.panic.core.models.UserFunction
