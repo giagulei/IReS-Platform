@@ -123,11 +123,14 @@ public class AbstractWorkflow1 {
 		materializedWorkflow.setPolicy(groupInputs, optimizationFunction, functionTarget);
 		Workflow1DPTable dpTable = new Workflow1DPTable();
 		logger.info("Initiated!!");
+		int planCount = 0;
+		double minExecTime = Integer.MAX_VALUE;
 		for(WorkflowNode t : targets) {
 			logger.info("Materializing workflow node: " + t.toStringNorecursive());
 			List<WorkflowNode> l = t.materializeExhaustive(materializedWorkflow, dpTable, t.getName());
 			logger.info("Candidate Plans: ");
 			for(WorkflowNode r : l){
+				planCount++;
 				logger.info("Plan for dataset: "+r.toStringNorecursive());
 				//List<List<WorkflowNode>> candidatePlans = dpTable.eTable.get(r.dataset);
 				List<WorkflowNode> cplan = dpTable.getPlan(r.dataset);
@@ -138,10 +141,14 @@ public class AbstractWorkflow1 {
 				String metricsString="";
 				for(Entry<String, Double> m : finalMetrics.entrySet()){
 					metricsString+=m.getKey()+"  "+m.getValue()+" => ";
+					if(m.getKey().contains("exec") && m.getValue() < minExecTime){
+						minExecTime = m.getValue();
+					}
 				}
 				logger.info(metricsString);
 			}
 		}
+		logger.info("PLANCOUNT = "+planCount+ "OPTIMAL EXEC TIME = "+minExecTime);
 		//=========================================================
 
 		if (optimizationFunctions.size() <= 1) {

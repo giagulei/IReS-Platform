@@ -729,17 +729,20 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 			List<WorkflowNode> tplan = clonePlan(plan);
 			tempN.addInput(tempInputNode);
 
-			boolean inputMatches = false;
+			List<HashMap<String, Double>> newMinCostsForInput = new ArrayList<>();
+			for(HashMap<String, Double> m : minCostsForInput){
+				newMinCostsForInput.add(cloneMetrics(m));
+			}
 
-			Double operatorOneInputCost = 0.0;
+			boolean inputMatches = false;
 
 			HashMap<String, Double> oneInputMetrics = null;
 			logger.info("materializedInputs: " + materializedInputs);
 			//============================================================
 
 			logger.info("CHECKING INPUT DATASET: " + in.dataset.datasetName);
-
 			WorkflowNode bestInput = null;
+
 			if (tempInput.checkMatch(in.dataset)) {
 				logger.info("true");
 				inputMatches = true;
@@ -748,7 +751,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 
 				//operatorOneInputCost = dpTable.getCost(in.dataset);
 				oneInputMetrics = dpTable.getMetrics(in.dataset);
-				bestInput = in;
+				bestInput = in.clone();
 
 			} else {
 				//check move
@@ -781,16 +784,8 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 						moveNode.setOptimalCost(optCost - prevCost);
 
 						moveNode.setExecTime(nextMetrics.get("execTime") - prevMetrics.get("execTime"));
-						//moveNode.setOptimalCost(m.getMettric(metric, moveNode.inputs));
 						Double tempCost = dpTable.getCost(in.dataset) + moveNode.getCost();
 
-						operatorOneInputCost = tempCost;
-										/*HashMap<String, Double> prevMetrics = dpTable.getMetrics(in.dataset);
-
-										oneInputMetrics = new HashMap<String, Double>();
-										for(Entry<String, Double> e : prevMetrics.entrySet()){
-											oneInputMetrics.put(e.getKey(), e.getValue()+m.getMettric(e.getKey(), moveNode.inputs));
-										}*/
 						oneInputMetrics = new HashMap<String, Double>();
 						for (Entry<String, Double> e : nextMetrics.entrySet()) {
 							if (prevMetrics.containsKey(e.getKey())) {
@@ -820,7 +815,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 			}
 			if(inputMatches) {
 
-				minCostsForInput.add(oneInputMetrics);
+				newMinCostsForInput.add(oneInputMetrics);
 				bestInputs.add(bestInput);
 				if (bestInput.isOperator) {
 					//move
@@ -843,15 +838,13 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				for(WorkflowNode w: tplan) planString += w.toStringNorecursive()+" ";
 				logger.info(planString);
 				//=======================
-				List<HashMap<String, Double>> newMinCostsForInput = new ArrayList<>();
-				for(HashMap<String, Double> m : minCostsForInput){
-					newMinCostsForInput.add(cloneMetrics(m));
-				}
+
 
 				List<WorkflowNode> retPlan = iterateCandidateInputs(materializedWorkflow, op,
 						tempN.clone(), materializedInputs, dpTable,
 						clonePlan(tplan), clonePlan(bestInputs), newMinCostsForInput,
 						currentInput + 1, totalInputs, fromName);
+
 				if(retPlan != null) {
 					ret.addAll(retPlan);
 				}else{
@@ -875,7 +868,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 	public HashMap<String, Double> cloneMetrics(HashMap<String, Double> metrics){
 		HashMap<String, Double> newMetrics = new HashMap<>();
 		for(Entry<String, Double> e: metrics.entrySet()){
-			newMetrics.put(e.getKey(), e.getValue());
+			newMetrics.put(e.getKey(), new Double(e.getValue()));
 		}
 		return newMetrics;
 	}
@@ -932,7 +925,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					List<WorkflowNode> bestInputs = new ArrayList<WorkflowNode>();
 
 					List<WorkflowNode> retPlan = iterateCandidateInputs(materializedWorkflow, op, temp.clone(), materializedInputs, dpTable,
-							clonePlan(plan), clonePlan(bestInputs), minCostsForInput, 0, inputs, fromName);
+							clonePlan(plan), clonePlan(bestInputs), new ArrayList<HashMap<String, Double>>(), 0, inputs, fromName);
 					if(retPlan != null) {
 						ret.addAll(retPlan);
 					}
