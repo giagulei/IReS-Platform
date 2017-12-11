@@ -157,14 +157,14 @@ public class Dataset implements Comparable<Dataset> {
 	
 	public void copyExecVariables(Dataset dataset, int position) {
 		logger.info( "DATASET TREE: " + datasetTree);
-		//if(datasetTree != null && datasetTree.tree.containsKey("Execution")) { //TODO: gmytil if
+		if(datasetTree != null && datasetTree.tree.containsKey("Execution")) { //TODO: gmytil if
 			SpecTreeNode variables = datasetTree.getNode("Execution");
 			HashMap<String, String> val = new HashMap<String, String>();
 			variables.toKeyValues("", val);
 			for (Entry<String, String> e : val.entrySet()) {
 				dataset.add("Execution." + e.getKey(), e.getValue());
 			}
-		//}
+		}
 	}
 	
 	public void copyOptimization(Dataset dataset) {
@@ -175,6 +175,17 @@ public class Dataset implements Comparable<Dataset> {
 			for(Entry<String, String> kv:kvs.entrySet())
 				dataset.add(kv.getKey(), kv.getValue());
 		}
+	}
+
+	//TODO: gmytil
+	@Override
+	public int hashCode(){
+		return datasetName.hashCode();
+	}
+
+	@Override
+	public boolean equals(Object o){
+		return (datasetName.equals(((Dataset) o).datasetName));
 	}
 
 }

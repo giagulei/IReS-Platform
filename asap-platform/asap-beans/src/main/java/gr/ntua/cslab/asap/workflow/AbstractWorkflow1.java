@@ -170,8 +170,8 @@ public class AbstractWorkflow1 {
 			 * 				- MAX_PARETO_PLANS
 			 */
 
-		int NUM_GENERATIONS = 100;
-		int MAX_PARET0_PLANS = 10;
+		int NUM_GENERATIONS = 1000;
+		int MAX_PARET0_PLANS = 100;
 
 		String fullName = name + "_" + nameExtention;
 		MaterializedWorkflow1 materializedWorkflow = new MaterializedWorkflow1(fullName,
@@ -231,7 +231,12 @@ public class AbstractWorkflow1 {
 				Operator op = NSGAIIPlanning.materializedOperators.get(mapping[oper.getKey()]);
 				logger.info(op.getEngine()+" selected for "+operators.get(oper.getKey()).getName());
 			}
+			logger.info("Final Plan Cost:");
+			for(Entry<String, Double> e : NSGAIIPlanning.solutionMap.get(pareto).optimalCosts.entrySet()){
+				logger.info(e.getKey()+": "+e.getValue());
+			}
 		}
+		logger.info("END PARETO");
 		//=============================================================================================
 
 		//================ Always return first solution for materialization =============================

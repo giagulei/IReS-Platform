@@ -58,6 +58,8 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 	public boolean copyToLocal=false, copyToHDFS=false;
 	public String inMonitorValues;
 
+	private HashMap<String, Set<String>> permitIteration;
+
 
 	public WorkflowNode(boolean isOperator, boolean isAbstract, String abstractName) {
 		this.abstractName = abstractName;
@@ -69,6 +71,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		optimalCost=0.0;
 		execTime=0.0;
 		optimalMetrics = new HashMap<>();
+		permitIteration = new HashMap<>();
 	}
 
 	public WorkflowNode clone(){
@@ -624,6 +627,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 
 			//int outputs =Integer.parseInt(op.getParameter("Constraints.Output.number"));
 			int outN = 0;
+			List<String> tempPermits = new ArrayList<>();
 			WorkflowNode tempOutputNode = null;
 			Dataset tempOutput = null;
 			//System.out.println(fromName);
@@ -631,6 +635,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 			for (WorkflowNode out : outputs) {
 				tempOutputNode = new WorkflowNode(false, false, "");
 				tempOutput = new Dataset("t" + materializedWorkflow.count);
+				logger.info("Created Output: t"+ materializedWorkflow.count);
 				materializedWorkflow.count++;
 				logger.info("Call outputFor() for operator: " + op.opName);
 				logger.info("with tempOutput: " + tempOutput);
@@ -653,11 +658,12 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				//tempOutput.outputFor(op, 0, temp.inputs);
 				tempOutputNode.setDataset(tempOutput);
 				tempOutputNode.addInput(temp);
+				tempPermits.add(tempOutputNode.dataset.datasetName);
 				logger.info("out.getName(): " + out.getName() + " fromName: " + fromName);
+
 				if (out.getName().equals(fromName)) {
 					ret.add(tempOutputNode);
 					plan.add(tempOutputNode);
-
 					//=============================
 					logger.info("RET: "+tempOutputNode.toStringNorecursive());
 					logger.info("ADDING NEW PLAN");
@@ -712,14 +718,37 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 
 				outN++;
 			}
+
+			if(tempPermits.size() > 1){
+				String key = tempPermits.get(0);
+				Set<String> mapped = new HashSet<>();
+				for(int i = 1; i < tempPermits.size(); i++){
+					mapped.add(tempPermits.get(i));
+				}
+				logger.info("PERMADD: "+key);
+				permitIteration.put(key, mapped);
+			}
 			//TODO: Inspect each computed plan atomically
 			return ret;
 		}
 
 
+		String firstDatasetInput = materializedInputs.get(currentInput).get(0).dataset.datasetName;
+		logger.info("FIRST: materializedInputs: " + materializedInputs);
 
+		logger.info("PERMITS");
+		for(String s : permitIteration.keySet()){
+			logger.info(s);
+		}
 
 		for (WorkflowNode in : materializedInputs.get(currentInput)) {
+
+			if(!firstDatasetInput.equals(in.dataset.datasetName) && permitIteration.containsKey(firstDatasetInput)){
+				if(!permitIteration.get(firstDatasetInput).contains(in.dataset.datasetName)){
+					return null;
+				}
+			}
+
 			Dataset tempInput = new Dataset("t" + materializedWorkflow.count);
 			materializedWorkflow.count++;
 			tempInput.inputFor(op, currentInput);
@@ -923,6 +952,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					int inputs = Integer.parseInt(op.getParameter("Constraints.Input.number"));
 					boolean inputsMatch = true;
 					List<WorkflowNode> bestInputs = new ArrayList<WorkflowNode>();
+
 
 					List<WorkflowNode> retPlan = iterateCandidateInputs(materializedWorkflow, op, temp.clone(), materializedInputs, dpTable,
 							clonePlan(plan), clonePlan(bestInputs), new ArrayList<HashMap<String, Double>>(), 0, inputs, fromName);
