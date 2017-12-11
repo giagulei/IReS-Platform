@@ -58,7 +58,8 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 	public boolean copyToLocal=false, copyToHDFS=false;
 	public String inMonitorValues;
 
-	private HashMap<String, Set<String>> permitIteration;
+	private static HashMap<String, List<String>> pathsToRoot = new HashMap<>();
+	private static HashMap<String, Set<String>> permitMatching = new HashMap<>();
 
 
 	public WorkflowNode(boolean isOperator, boolean isAbstract, String abstractName) {
@@ -71,7 +72,6 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		optimalCost=0.0;
 		execTime=0.0;
 		optimalMetrics = new HashMap<>();
-		permitIteration = new HashMap<>();
 	}
 
 	public WorkflowNode clone(){
@@ -565,7 +565,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 	public List<WorkflowNode> iterateCandidateInputs(MaterializedWorkflow1 materializedWorkflow, Operator op, WorkflowNode temp, List<List<WorkflowNode>> materializedInputs,
 									   Workflow1DPTable dpTable, List<WorkflowNode> plan, List<WorkflowNode> bestInputs,
 									   List<HashMap<String, Double>> minCostsForInput,
-									   int currentInput, int totalInputs, String fromName) throws Exception {
+									   int currentInput, int totalInputs, String fromName, String firstDatasetInput) throws Exception {
 
 		List<WorkflowNode> ret  = new ArrayList<>();
 
@@ -665,12 +665,13 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					ret.add(tempOutputNode);
 					plan.add(tempOutputNode);
 					//=============================
-					logger.info("RET: "+tempOutputNode.toStringNorecursive());
-					logger.info("ADDING NEW PLAN");
-					String planString = "";
-					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
-					logger.info(planString);
+//					logger.info("RET: "+tempOutputNode.toStringNorecursive());
+//					logger.info("ADDING NEW PLAN");
+//					String planString = "";
+//					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
+//					logger.info(planString);
 					//==============================
+
 					//System.out.println(nextMetrics);
 					dpTable.addRecord(tempOutput, plan, optCost, bestInputMetrics);
 //					if(dpTable.eTable.containsKey(tempOutput)){
@@ -690,11 +691,12 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					tp.add(tempOutputNode);
 
 					//=============================
-					logger.info("ADDING NEW PLAN");
-					String planString = "";
-					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
-					logger.info(planString);
+//					logger.info("ADDING NEW PLAN");
+//					String planString = "";
+//					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
+//					logger.info(planString);
 					//==============================
+
 					//System.out.println(nextMetrics);
 					HashMap<String, Double> metrics = new HashMap<String, Double>();
 					for (String m : materializedWorkflow.groupInputs.keySet()) {
@@ -719,38 +721,153 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				outN++;
 			}
 
+			for(String outputName: tempPermits){
+				List<String> parentPointers = new ArrayList<>();
+				for(WorkflowNode in : temp.inputs){
+					parentPointers.add(in.dataset.datasetName);
+					if(pathsToRoot.containsKey(in.dataset.datasetName)){
+						parentPointers.addAll(pathsToRoot.get(in.dataset.datasetName));
+					}
+				}
+				pathsToRoot.put(outputName, parentPointers);
+			}
+
 			if(tempPermits.size() > 1){
 				String key = tempPermits.get(0);
 				Set<String> mapped = new HashSet<>();
 				for(int i = 1; i < tempPermits.size(); i++){
+				//	logger.info("OBJECTS: "+tempPermits.get(i));
 					mapped.add(tempPermits.get(i));
 				}
-				logger.info("PERMADD: "+key);
-				permitIteration.put(key, mapped);
+			//	logger.info("PERMADD: "+key);
+				permitMatching.put(key, mapped);
 			}
-			//TODO: Inspect each computed plan atomically
+
+			//===== PRINT ============
+//			logger.info("Parent Dict:");
+//			for(Entry<String, List<String>> e : pathsToRoot.entrySet()){
+//				String row = e.getKey()+" --> ";
+//				for(String v : e.getValue()){
+//					row += v+" ";
+//				}
+//				logger.info(row);
+//			}
+//			logger.info("Perm Matching:");
+//			for(Entry<String, Set<String>> e : permitMatching.entrySet()){
+//				String row = e.getKey()+" --> ";
+//				for(String v : e.getValue()){
+//					row += v+" ";
+//				}
+//				logger.info(row);
+//			}
+			//=========================
+
+
+
+//			//TODO: Inspect each computed plan atomically
 			return ret;
 		}
 
 
-		String firstDatasetInput = materializedInputs.get(currentInput).get(0).dataset.datasetName;
-		logger.info("FIRST: materializedInputs: " + materializedInputs);
+		//logger.info("MATERINPUTS: "+materializedInputs);
 
-		logger.info("PERMITS");
-		for(String s : permitIteration.keySet()){
-			logger.info(s);
+		if(materializedInputs.get(currentInput).isEmpty()) return null;
+		if(currentInput == 0) {
+			firstDatasetInput = materializedInputs.get(currentInput).get(0).dataset.datasetName;
+			logger.info("FIRST:: " + firstDatasetInput);
 		}
 
 		for (WorkflowNode in : materializedInputs.get(currentInput)) {
 
-			if(!firstDatasetInput.equals(in.dataset.datasetName) && permitIteration.containsKey(firstDatasetInput)){
-				if(!permitIteration.get(firstDatasetInput).contains(in.dataset.datasetName)){
-					return null;
+			logger.info("CHECKING INPUT DATASET: " + in.dataset.datasetName);
+
+			if(currentInput > 0 && materializedInputs.get(currentInput).size() > 1 && pathsToRoot.containsKey(firstDatasetInput) && pathsToRoot.containsKey(in.dataset.datasetName)
+					&& !firstDatasetInput.equals(in.dataset.datasetName)){
+				List<String> l1 = pathsToRoot.get(firstDatasetInput);
+				List<String> l2 = pathsToRoot.get(in.dataset.datasetName);
+
+//				logger.info("COMPARE...");
+//				logger.info(l1);
+//				logger.info(l2);
+
+				boolean cont = false;
+				if(l1.size() == l2.size()){
+					int j = l1.size()-1;
+					while(j >= 0){
+					//	logger.info("compare "+l1.get(j)+" with "+l2.get(j));
+						if(l1.get(j) != l2.get(j)){
+							if(permitMatching.containsKey(l1.get(j))){
+					//			logger.info("L1 = "+l1.get(j)+" L2 = "+l2.get(j)+" permKey = "+l1.get(j)+" permVal = "+permitMatching.get(l1.get(j)));
+								if(!permitMatching.get(l1.get(j)).contains(l2.get(j))){
+					//				logger.info("fail");
+									cont = true;
+									break;
+								}
+							}else if(permitMatching.containsKey(l2.get(j))){
+					//			logger.info("L1 = "+l1.get(j)+" L2 = "+l2.get(j)+" permKey = "+l2.get(j)+" permVal = "+permitMatching.get(l2.get(j)));
+								if(!permitMatching.get(l2.get(j)).contains(l1.get(j))){
+					//				logger.info("fail");
+									cont = true;
+									break;
+								}
+							}
+					//		logger.info("success");
+						}
+					//	logger.info("success");
+						j--;
+					}
+				}else{
+					int diff = Math.abs(l1.size()-l2.size());
+					List<String> clist = null;
+					List<String> olist = null;
+					int mlast = 0;
+					if(l1.size() < l2.size()){
+						mlast = l1.size();
+						clist = l1;olist = l2;
+					}else{
+						mlast = l2.size();
+						clist = l2;olist = l1;
+					}
+					int j = mlast-1;
+					while(j >= 0){
+						if(clist.get(j) != olist.get(j+diff)){
+							if(permitMatching.containsKey(clist.get(j))){
+						//		logger.info("L1 = "+clist.get(j)+" L2 = "+olist.get(j)+" permKey = "+clist.get(j)+" permVal = "+permitMatching.get(clist.get(j)));
+								if(!permitMatching.get(clist.get(j)).contains(olist.get(j))){
+						//			logger.info("fail");
+									cont = true;
+									break;
+								}
+							}else if(permitMatching.containsKey(olist.get(j))){
+						//		logger.info("L1 = "+clist.get(j)+" L2 = "+olist.get(j)+" permKey = "+olist.get(j)+" permVal = "+permitMatching.get(olist.get(j)));
+								if(!permitMatching.get(olist.get(j)).contains(clist.get(j))){
+						//			logger.info("fail");
+									cont = true;
+									break;
+								}
+							}
+						}
+						j--;
+					}
 				}
+
+				if(cont) continue;
 			}
 
+			//=============
 			Dataset tempInput = new Dataset("t" + materializedWorkflow.count);
 			materializedWorkflow.count++;
+
+			if(pathsToRoot.containsKey(in.dataset.datasetName)) {
+//				logger.info("EXISTS ENTRY FOR "+in.dataset.datasetName);
+//				logger.info("FOUND VALUE: "+ pathsToRoot.get(in.dataset.datasetName));
+//				logger.info("KEY: "+tempInput.datasetName);
+				List<String> l = new ArrayList<>();
+				l.add(in.dataset.datasetName);
+				l.addAll(pathsToRoot.get(in.dataset.datasetName));
+				pathsToRoot.put(tempInput.datasetName, l);
+			}
+
 			tempInput.inputFor(op, currentInput);
 			WorkflowNode tempInputNode = new WorkflowNode(false, false, "");
 			tempInputNode.setDataset(tempInput);
@@ -766,10 +883,9 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 			boolean inputMatches = false;
 
 			HashMap<String, Double> oneInputMetrics = null;
-			logger.info("materializedInputs: " + materializedInputs);
 			//============================================================
 
-			logger.info("CHECKING INPUT DATASET: " + in.dataset.datasetName);
+
 			WorkflowNode bestInput = null;
 
 			if (tempInput.checkMatch(in.dataset)) {
@@ -855,24 +971,24 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					logger.info("PREVIOUS: "+bestInput.inputs.get(0).dataset.datasetName);
 					tplan.add(bestInput);
 				} else {
-					logger.info("PREVIOUS: "+bestInput.dataset.datasetName);
+					//logger.info("PREVIOUS: "+bestInput.dataset.datasetName);
 					tplan.addAll(dpTable.getPlan(bestInput.dataset));
 				}
 				tplan.add(tempInputNode.clone());
-				logger.info("LAST NODE = "+tempInputNode.toStringNorecursive()+" count = "+materializedWorkflow.count);
+				//logger.info("LAST NODE = "+tempInputNode.toStringNorecursive()+" count = "+materializedWorkflow.count);
 
 				//=======================
-				logger.info("PLAN SO FAR:");
-				String planString = "";
-				for(WorkflowNode w: tplan) planString += w.toStringNorecursive()+" ";
-				logger.info(planString);
+//				logger.info("PLAN SO FAR:");
+//				String planString = "";
+//				for(WorkflowNode w: tplan) planString += w.toStringNorecursive()+" ";
+//				logger.info(planString);
 				//=======================
 
 
 				List<WorkflowNode> retPlan = iterateCandidateInputs(materializedWorkflow, op,
 						tempN.clone(), materializedInputs, dpTable,
 						clonePlan(tplan), clonePlan(bestInputs), newMinCostsForInput,
-						currentInput + 1, totalInputs, fromName);
+						currentInput + 1, totalInputs, fromName, firstDatasetInput);
 
 				if(retPlan != null) {
 					ret.addAll(retPlan);
@@ -955,7 +1071,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 
 
 					List<WorkflowNode> retPlan = iterateCandidateInputs(materializedWorkflow, op, temp.clone(), materializedInputs, dpTable,
-							clonePlan(plan), clonePlan(bestInputs), new ArrayList<HashMap<String, Double>>(), 0, inputs, fromName);
+							clonePlan(plan), clonePlan(bestInputs), new ArrayList<HashMap<String, Double>>(), 0, inputs, fromName, null);
 					if(retPlan != null) {
 						ret.addAll(retPlan);
 					}
