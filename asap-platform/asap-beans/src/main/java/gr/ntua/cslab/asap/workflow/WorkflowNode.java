@@ -573,21 +573,16 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 			Double prevCost = 0.0;
 			Double optCost = 0.0;
 			HashMap<String, Double> nextMetrics = null;
-			HashMap<String, Double> bestInputMetrics = new HashMap<String, Double>();
-			/* vpapa: the operator may not have any inputs if it is a generator for
-				example. Thus minCostsForInput is empty
-			*/
+			HashMap<String, Double> bestInputMetrics = new HashMap<>();
+
 			if (!minCostsForInput.isEmpty()) {
 				for (String m : minCostsForInput.get(0).keySet()) {
-					List<Double> t1 = new ArrayList<Double>();
+					List<Double> t1 = new ArrayList<>();
 					for (HashMap<String, Double> h : minCostsForInput) {
 						t1.add(h.get(m));
 					}
 					Collections.sort(t1);
-					//System.out.println(m+": "+t1);
-					//System.out.println(minCostsForInput);
 					String g = materializedWorkflow.groupInputs.get(m);
-					//System.out.println(g);
 					Double operatorInputCost = 0.0;
 					if (g.contains("min")) {
 						operatorInputCost = t1.get(0);
@@ -601,9 +596,6 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					bestInputMetrics.put(m, operatorInputCost);
 				}
 			} else {
-				/* vpapa: whether inputs exist or not, this operator
-					must be in the plan
-				*/
 				logger.info("Processing kind of generator operator and"
 						+ " thus input metrics are set manually");
 				bestInputMetrics.put("execTime", temp.getCost());
@@ -625,12 +617,11 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 
 			plan.add(temp.clone());
 
-			//int outputs =Integer.parseInt(op.getParameter("Constraints.Output.number"));
 			int outN = 0;
 			List<String> tempPermits = new ArrayList<>();
 			WorkflowNode tempOutputNode = null;
 			Dataset tempOutput = null;
-			//System.out.println(fromName);
+
 			logger.info("Outputs are: " + outputs);
 			for (WorkflowNode out : outputs) {
 				tempOutputNode = new WorkflowNode(false, false, "");
@@ -654,8 +645,6 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					logger.info("the graph file the operatos has x outputs but in the");
 					logger.info("description file y outputs where declared.");
 				}
-
-				//tempOutput.outputFor(op, 0, temp.inputs);
 				tempOutputNode.setDataset(tempOutput);
 				tempOutputNode.addInput(temp);
 				tempPermits.add(tempOutputNode.dataset.datasetName);
@@ -671,49 +660,23 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
 					logger.info(planString);
 					//==============================
-					//System.out.println(nextMetrics);
 					dpTable.addRecord(tempOutput, plan, optCost, bestInputMetrics);
-//					if(dpTable.eTable.containsKey(tempOutput)){
-//						dpTable.eTable.get(tempOutput).add(plan);
-//						dpTable.eMetrics.get(tempOutput).add(bestInputMetrics);
-//					}else{
-//						List<List<WorkflowNode>> datasetPlans = new ArrayList<>();
-//						List<HashMap<String, Double>> metricsList = new ArrayList<>();
-//						metricsList.add(bestInputMetrics);
-//						datasetPlans.add(plan);
-//						dpTable.eTable.put(tempOutput, datasetPlans);
-//						dpTable.eMetrics.put(tempOutput,metricsList);
-//					}
 				} else {
 					out.inputs.add(tempOutputNode);
 					ArrayList<WorkflowNode> tp = new ArrayList<>();
 					tp.add(tempOutputNode);
-
 					//=============================
 					logger.info("ADDING NEW PLAN");
 					String planString = "";
 					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
 					logger.info(planString);
 					//==============================
-					//System.out.println(nextMetrics);
-					HashMap<String, Double> metrics = new HashMap<String, Double>();
+					HashMap<String, Double> metrics = new HashMap<>();
 					for (String m : materializedWorkflow.groupInputs.keySet()) {
 						metrics.put(m, 0.0);
 					}
 					dpTable.addRecord(tempOutput, tp, new Double(0), metrics);
 					dpTable.addInputs(out.dataset, tp);
-
-//					if(dpTable.eTable.containsKey(tempOutput)){
-//						dpTable.eTable.get(tempOutput).add(tp);
-//						dpTable.eMetrics.get(tempOutput).add(metrics);
-//					}else{
-//						List<List<WorkflowNode>> datasetPlans = new ArrayList<>();
-//						List<HashMap<String, Double>> metricsList = new ArrayList<>();
-//						metricsList.add(metrics);
-//						datasetPlans.add(tp);
-//						dpTable.eTable.put(tempOutput, datasetPlans);
-//						dpTable.eMetrics.put(tempOutput,metricsList);
-//					}
 				}
 
 				outN++;
@@ -728,7 +691,6 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				logger.info("PERMADD: "+key);
 				permitIteration.put(key, mapped);
 			}
-			//TODO: Inspect each computed plan atomically
 			return ret;
 		}
 
@@ -778,16 +740,12 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				tempInputNode.setAbstractName(in.getName());
 				tempInputNode.addInput(in);
 
-				//operatorOneInputCost = dpTable.getCost(in.dataset);
 				oneInputMetrics = dpTable.getMetrics(in.dataset);
 				bestInput = in.clone();
 
 			} else {
-				//check move
-				//one input checked, go for the next
 				logger.info("materializedInputs.size(): " + materializedInputs.size());
 				logger.info("materializedInputs.get(" + currentInput + ").size(): " + materializedInputs.get(currentInput).size());
-				//generic move
 				logger.info("Check move ");
 				List<Operator> moveOps = OperatorLibrary.checkMove(in.dataset, tempInput);
 				logger.info("Move operators: " + moveOps);
@@ -798,9 +756,8 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 						WorkflowNode moveNode = new WorkflowNode(true, false, "");
 						moveNode.setOperator(m);
 						logger.info("Move node " + moveNode.getName() + " added input:\t" + in);
-						//logger.info( "dataset tree " + in.dataset.datasetTree);
 						moveNode.addInput(in);
-						List<WorkflowNode> lin = new ArrayList<WorkflowNode>();
+						List<WorkflowNode> lin = new ArrayList<>();
 						lin.add(in);
 						tempInputNode.addInput(moveNode);
 						HashMap<String, Double> prevMetrics = dpTable.getMetrics(in.dataset);
@@ -815,7 +772,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 						moveNode.setExecTime(nextMetrics.get("execTime") - prevMetrics.get("execTime"));
 						Double tempCost = dpTable.getCost(in.dataset) + moveNode.getCost();
 
-						oneInputMetrics = new HashMap<String, Double>();
+						oneInputMetrics = new HashMap<>();
 						for (Entry<String, Double> e : nextMetrics.entrySet()) {
 							if (prevMetrics.containsKey(e.getKey())) {
 								oneInputMetrics.put(e.getKey(), e.getValue());
@@ -824,9 +781,6 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 						bestInput = moveNode;
 					}
 				} else {
-									/* vpapa: maybe there is in an error in description files or
-									 * no appropriate move operator has been defined correctly
-									*/
 					logger.info("ERROR: For operator " + op.opName + " there "
 							+ " is an input mismatch.\n 1. Check inside its"
 							+ " description file if all properties Constraints.Input"

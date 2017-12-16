@@ -35,7 +35,8 @@ public class TestMaterialization {
 		String policy ="metrics,cost,execTime\n"+
 				"groupInputs,execTime,max\n"+
 				"groupInputs,cost,sum\n"+
-				"function,execTime,min";
+				"function,execTime,min\n"+
+				"function,cost,min";
 		AbstractWorkflow1 workflow = new AbstractWorkflow1("testPegasus");
 		XMLReaderFactory xmlRFactory = new XMLReaderFactory(path);
 		Hashtable<Integer, Object> nodes = xmlRFactory.getReader("job").readData(); 
@@ -58,7 +59,7 @@ public class TestMaterialization {
 			//add inputs
 			if(n.getParents().size()==0){
 				Dataset d = new Dataset("hdfs_file_"+datasetCount);
-				d.readPropertiesFromFile(new File("/home/giagulei/git/giagos_asap/" +
+				d.readPropertiesFromFile(new File("/Users/giagulei/git/giagos_asap/" +
 						"IReS-Platform/asap-platform/asap-server/target/asapLibrary/datasets/hdfs_file"));
 				WorkflowNode t = new WorkflowNode(false,false,"hdfs_file_"+datasetCount);
 				datasetCount++;
