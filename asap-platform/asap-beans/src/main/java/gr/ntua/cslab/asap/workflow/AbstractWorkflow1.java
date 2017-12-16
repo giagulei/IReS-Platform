@@ -111,6 +111,7 @@ public class AbstractWorkflow1 {
 
 		//=======================================================
 		logger.info("Exhaustive materialization...");
+		long startExhaustive = System.currentTimeMillis();
 		String fullName=name+"_"+nameExtention;
 		materializedWorkflow = new MaterializedWorkflow1(fullName,
 				MaterializedWorkflowLibrary.getWorkflowDirectory()+"/"+fullName);
@@ -148,15 +149,22 @@ public class AbstractWorkflow1 {
 				logger.info(metricsString);
 			}
 		}
+		long endExhaustive = System.currentTimeMillis();
+		logger.info("Exhaustive Time: "+(endExhaustive-startExhaustive)+" milliseconds.");
 		logger.info("PLANCOUNT = "+planCount+ "OPTIMAL EXEC TIME = "+minExecTime);
 		//=========================================================
 
 		if (optimizationFunctions.size() <= 1) {
 			logger.info("Single objective optimization");
+			long startDP = System.currentTimeMillis();
 			materializedWorkflow = dpMaterialize(nameExtention, policy);
+			long endDP = System.currentTimeMillis();
+			logger.info("DP Time: "+(endDP-startDP)+" milliseconds.");
 		} else {
+			long startNSGA = System.currentTimeMillis();
 			materializedWorkflow = NSGAIIMaterialize(nameExtention, policy);
-
+			long endNSGA = System.currentTimeMillis();
+			logger.info("NSGAII Time: "+(endNSGA-startNSGA)+" milliseconds.");
 		}// end of AbstractWorkflow1 materialize
 		return materializedWorkflow;
 	}

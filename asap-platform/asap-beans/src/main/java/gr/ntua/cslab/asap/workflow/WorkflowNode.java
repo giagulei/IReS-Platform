@@ -58,7 +58,9 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 	public boolean copyToLocal=false, copyToHDFS=false;
 	public String inMonitorValues;
 
-	private HashMap<String, Set<String>> permitIteration;
+	//private static HashMap<String, List<String>> pathsToRoot = new HashMap<>();
+	private static HashMap<String, HashMap<String, String>> opPathsToRoot = new HashMap<>();
+	//private static HashMap<String, Set<String>> permitMatching = new HashMap<>();
 
 
 	public WorkflowNode(boolean isOperator, boolean isAbstract, String abstractName) {
@@ -71,7 +73,6 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		optimalCost=0.0;
 		execTime=0.0;
 		optimalMetrics = new HashMap<>();
-		permitIteration = new HashMap<>();
 	}
 
 	public WorkflowNode clone(){
@@ -565,7 +566,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 	public List<WorkflowNode> iterateCandidateInputs(MaterializedWorkflow1 materializedWorkflow, Operator op, WorkflowNode temp, List<List<WorkflowNode>> materializedInputs,
 									   Workflow1DPTable dpTable, List<WorkflowNode> plan, List<WorkflowNode> bestInputs,
 									   List<HashMap<String, Double>> minCostsForInput,
-									   int currentInput, int totalInputs, String fromName) throws Exception {
+									   int currentInput, int totalInputs, String fromName, List<String> selectedDatasets) throws Exception {
 
 		List<WorkflowNode> ret  = new ArrayList<>();
 
@@ -650,15 +651,17 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				tempPermits.add(tempOutputNode.dataset.datasetName);
 				logger.info("out.getName(): " + out.getName() + " fromName: " + fromName);
 
+				//logger.info("Op: "+op.opName +" Abst: "+op.getParameter("Constraints.OpSpecification.Algorithm.name"));
+
 				if (out.getName().equals(fromName)) {
 					ret.add(tempOutputNode);
 					plan.add(tempOutputNode);
 					//=============================
-					logger.info("RET: "+tempOutputNode.toStringNorecursive());
-					logger.info("ADDING NEW PLAN");
-					String planString = "";
-					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
-					logger.info(planString);
+//					logger.info("RET: "+tempOutputNode.toStringNorecursive());
+//					logger.info("ADDING NEW PLAN");
+//					String planString = "";
+//					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
+//					logger.info(planString);
 					//==============================
 					dpTable.addRecord(tempOutput, plan, optCost, bestInputMetrics);
 				} else {
@@ -666,10 +669,10 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					ArrayList<WorkflowNode> tp = new ArrayList<>();
 					tp.add(tempOutputNode);
 					//=============================
-					logger.info("ADDING NEW PLAN");
-					String planString = "";
-					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
-					logger.info(planString);
+//					logger.info("ADDING NEW PLAN");
+//					String planString = "";
+//					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
+//					logger.info(planString);
 					//==============================
 					HashMap<String, Double> metrics = new HashMap<>();
 					for (String m : materializedWorkflow.groupInputs.keySet()) {
@@ -682,37 +685,113 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				outN++;
 			}
 
-			if(tempPermits.size() > 1){
-				String key = tempPermits.get(0);
-				Set<String> mapped = new HashSet<>();
-				for(int i = 1; i < tempPermits.size(); i++){
-					mapped.add(tempPermits.get(i));
+//			for(String outputName: tempPermits){
+//				List<String> parentPointers = new ArrayList<>();
+//				for(WorkflowNode in : temp.inputs){
+//					parentPointers.add(in.dataset.datasetName);
+//					if(pathsToRoot.containsKey(in.dataset.datasetName)){
+//						parentPointers.addAll(pathsToRoot.get(in.dataset.datasetName));
+//					}
+//				}
+//				pathsToRoot.put(outputName, parentPointers);
+//			}
+
+			for(String outputName: tempPermits){
+				HashMap<String, String> parentPointers = new HashMap<>();
+				parentPointers.put(op.getParameter("Constraints.OpSpecification.Algorithm.name"), op.opName);
+				for(WorkflowNode in : temp.inputs) {
+					if (opPathsToRoot.containsKey(in.dataset.datasetName)) {
+						parentPointers.putAll(opPathsToRoot.get(in.dataset.datasetName));
+					}
 				}
-				logger.info("PERMADD: "+key);
-				permitIteration.put(key, mapped);
+
+				opPathsToRoot.put(outputName, parentPointers);
 			}
+
+//			if(tempPermits.size() > 1){
+//				String key = tempPermits.get(0);
+//				Set<String> mapped = new HashSet<>();
+//				for(int i = 1; i < tempPermits.size(); i++){
+//					//logger.info("OBJECTS: "+tempPermits.get(i));
+//					mapped.add(tempPermits.get(i));
+//				}
+//				//logger.info("PERMADD: "+key);
+//				permitMatching.put(key, mapped);
+//			}
+
+			//===== PRINT ============
+//			logger.info("Parent Dict:");
+//			for(Entry<String, HashMap<String, String>> e : opPathsToRoot.entrySet()){
+//				String row = e.getKey()+" --> ";
+//				for(Entry<String, String> v : e.getValue().entrySet()){
+//					row += "("+v.getKey()+","+v.getValue()+") ";
+//				}
+//				logger.info(row);
+//			}
+
+
+
+//			logger.info("Perm Matching:");
+//			for(Entry<String, Set<String>> e : permitMatching.entrySet()){
+//				String row = e.getKey()+" --> ";
+//				for(String v : e.getValue()){
+//					row += v+" ";
+//				}
+//				logger.info(row);
+//			}
+			//=========================
+
 			return ret;
 		}
 
 
-		String firstDatasetInput = materializedInputs.get(currentInput).get(0).dataset.datasetName;
-		logger.info("FIRST: materializedInputs: " + materializedInputs);
+//		logger.info("MATERINPUTS: "+materializedInputs);
 
-		logger.info("PERMITS");
-		for(String s : permitIteration.keySet()){
-			logger.info(s);
-		}
+		if(materializedInputs.get(currentInput).isEmpty()) return null;
 
 		for (WorkflowNode in : materializedInputs.get(currentInput)) {
 
-			if(!firstDatasetInput.equals(in.dataset.datasetName) && permitIteration.containsKey(firstDatasetInput)){
-				if(!permitIteration.get(firstDatasetInput).contains(in.dataset.datasetName)){
-					return null;
+//			logger.info("CHECKING INPUT DATASET: " + in.dataset.datasetName);
+
+			if(currentInput > 0 && selectedDatasets.size() > 0){
+
+//				logger.info("CheckMatch if dataset: "+in.dataset.datasetName+" matches with:");
+//				String dsetsRow = "";
+//				for(String sd: selectedDatasets){
+//					dsetsRow += sd+" ";
+//				}
+//				logger.info(dsetsRow);
+
+				boolean cont = false;
+
+				HashMap<String, String> lTest = opPathsToRoot.get(in.dataset.datasetName);
+				for(String sd: selectedDatasets){
+//					logger.info("Check "+in.dataset.datasetName+" with "+sd);
+					HashMap<String, String> lSelected = opPathsToRoot.get(sd);
+					if(!cmatch(lTest, lSelected)){
+						cont = true;
+						break;
+					}
 				}
+
+				if(cont) continue;
 			}
 
+			//=============
 			Dataset tempInput = new Dataset("t" + materializedWorkflow.count);
 			materializedWorkflow.count++;
+
+			if(opPathsToRoot.containsKey(in.dataset.datasetName)) {
+				opPathsToRoot.put(tempInput.datasetName, opPathsToRoot.get(in.dataset.datasetName));
+			}
+
+//			if(pathsToRoot.containsKey(in.dataset.datasetName)) {
+//				List<String> l = new ArrayList<>();
+//				l.add(in.dataset.datasetName);
+//				l.addAll(pathsToRoot.get(in.dataset.datasetName));
+//				pathsToRoot.put(tempInput.datasetName, l);
+//			}
+
 			tempInput.inputFor(op, currentInput);
 			WorkflowNode tempInputNode = new WorkflowNode(false, false, "");
 			tempInputNode.setDataset(tempInput);
@@ -728,10 +807,9 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 			boolean inputMatches = false;
 
 			HashMap<String, Double> oneInputMetrics = null;
-			logger.info("materializedInputs: " + materializedInputs);
 			//============================================================
 
-			logger.info("CHECKING INPUT DATASET: " + in.dataset.datasetName);
+
 			WorkflowNode bestInput = null;
 
 			if (tempInput.checkMatch(in.dataset)) {
@@ -809,24 +887,28 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					logger.info("PREVIOUS: "+bestInput.inputs.get(0).dataset.datasetName);
 					tplan.add(bestInput);
 				} else {
-					logger.info("PREVIOUS: "+bestInput.dataset.datasetName);
+					//logger.info("PREVIOUS: "+bestInput.dataset.datasetName);
 					tplan.addAll(dpTable.getPlan(bestInput.dataset));
 				}
 				tplan.add(tempInputNode.clone());
-				logger.info("LAST NODE = "+tempInputNode.toStringNorecursive()+" count = "+materializedWorkflow.count);
+				//logger.info("LAST NODE = "+tempInputNode.toStringNorecursive()+" count = "+materializedWorkflow.count);
 
 				//=======================
-				logger.info("PLAN SO FAR:");
-				String planString = "";
-				for(WorkflowNode w: tplan) planString += w.toStringNorecursive()+" ";
-				logger.info(planString);
+//				logger.info("PLAN SO FAR:");
+//				String planString = "";
+//				for(WorkflowNode w: tplan) planString += w.toStringNorecursive()+" ";
+//				logger.info(planString);
 				//=======================
 
 
+				//selectedDatasets.add(in.dataset.datasetName);
+				List<String> newSelections = new ArrayList<>();
+				newSelections.addAll(selectedDatasets);
+				newSelections.add(in.dataset.datasetName);
 				List<WorkflowNode> retPlan = iterateCandidateInputs(materializedWorkflow, op,
 						tempN.clone(), materializedInputs, dpTable,
 						clonePlan(tplan), clonePlan(bestInputs), newMinCostsForInput,
-						currentInput + 1, totalInputs, fromName);
+						currentInput + 1, totalInputs, fromName, newSelections);
 
 				if(retPlan != null) {
 					ret.addAll(retPlan);
@@ -838,6 +920,18 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 			}
 		}
 		return ret;
+	}
+
+
+	public boolean cmatch(HashMap<String, String> l1, HashMap<String, String> l2){
+		for(Entry<String, String> testedEntry : l1.entrySet()){
+			if(l2.containsKey(testedEntry.getKey())){
+				if(!l2.get(testedEntry.getKey()).equals(testedEntry.getValue())){
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	public List<WorkflowNode> clonePlan(List<WorkflowNode> plan){
@@ -860,10 +954,9 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 	public List<WorkflowNode> materializeExhaustive(MaterializedWorkflow1 materializedWorkflow,
 										  Workflow1DPTable dpTable, String fromName) throws Exception {
 
-		//int wcount = materializedWorkflow.count;
 		logger.info("Processing : " + toStringNorecursive()+" from name: "+fromName);
-		List<WorkflowNode> ret = new ArrayList<WorkflowNode>();
-		List<List<WorkflowNode>> materializedInputs = new ArrayList<List<WorkflowNode>>();
+		List<WorkflowNode> ret = new ArrayList<>();
+		List<List<WorkflowNode>> materializedInputs = new ArrayList<>();
 		WorkflowNode temp = null;
 
 		if(!isOperator){
@@ -876,19 +969,17 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		}
 
 		for(WorkflowNode in : inputs){
-			//logger.info( toStringNorecursive() + " has inputs: " + inputs);
-			//logger.info( "Input WorkflowNode: " + in);
 			List<WorkflowNode> l = in.materializeExhaustive(materializedWorkflow,dpTable,getName());
 			materializedInputs.add(l);
 		}
 
 
-		logger.info("Materialized inputs: " + materializedInputs);
+		logger.info("Exhaustive Materialized inputs: " + materializedInputs);
 		if (isOperator) {
+
 			if (isAbstract) {
 				List<Operator> operators = OperatorLibrary.getMatches(abstractOperator);
-				//logger.info( "For abstract operator " + abstractOperator.opName + " the available"
-				//			 + " operator implementations are:\n " + operators);
+				logger.info(operators.size()+" Recursions With "+materializedInputs);
 				for (Operator op : operators) {
 					if (!ClusterStatusLibrary.checkEngineStatus(op)) {
 						logger.info("Specified engine for operator " + op.opName + " is " + op.getEngine());
@@ -907,9 +998,11 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					boolean inputsMatch = true;
 					List<WorkflowNode> bestInputs = new ArrayList<WorkflowNode>();
 
+					logger.info("Start of Recursion with "+materializedInputs);
 
+					List<String> selectedDatasets = new ArrayList<>();
 					List<WorkflowNode> retPlan = iterateCandidateInputs(materializedWorkflow, op, temp.clone(), materializedInputs, dpTable,
-							clonePlan(plan), clonePlan(bestInputs), new ArrayList<HashMap<String, Double>>(), 0, inputs, fromName);
+							clonePlan(plan), clonePlan(bestInputs), new ArrayList<HashMap<String, Double>>(), 0, inputs, fromName, selectedDatasets);
 					if(retPlan != null) {
 						ret.addAll(retPlan);
 					}

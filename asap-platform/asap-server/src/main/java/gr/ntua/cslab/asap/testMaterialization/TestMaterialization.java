@@ -30,6 +30,7 @@ public class TestMaterialization {
 	static int datasetCount = 0;
 	static HashMap<Integer,WorkflowNode> operators = new HashMap<>();
 	static Random r = new Random(System.currentTimeMillis());
+
 	public static double execute(String path, String testCase, int matches) throws Exception {
 		
 		String policy ="metrics,cost,execTime\n"+
@@ -49,8 +50,10 @@ public class TestMaterialization {
 			WorkflowNode tempOp = createOp(n.getParents().keySet().size(),n.getChildren().keySet().size());
 			workflow.workflowNodes.put(tempOp.getName(), tempOp);
 			operators.put(e.getKey(), tempOp);
-			createMaterializedOps(n.getParents().keySet().size(),n.getChildren().keySet().size(),matches,tempOp.abstractOperator);
-//			System.out.println(e.getKey()+" inputs: "+n.getParents().keySet().size()+" outputs: "+n.getChildren().keySet().size());
+			//TODO: ta matches na einai random number [1-matches]. Mhn exoun oloi oi ops idio plh8os enallaktikwn
+			int engines = r.nextInt(matches);
+			if(engines == 0) engines = 1;
+			createMaterializedOps(n.getParents().keySet().size(),n.getChildren().keySet().size(),engines,tempOp.abstractOperator);
 		}
 		
 		for( Entry<Integer, Object> e:nodes.entrySet()){
@@ -157,8 +160,8 @@ public class TestMaterialization {
 			op.add("Optimization.model.cost", "gr.ntua.ece.cslab.panic.core.models.UserFunction");
 			op.add("Optimization.outputSpace.cost", "Double");
 			op.add("Optimization.outputSpace.execTime", "Double");
-			op.add("Optimization.cost", (r.nextDouble()*1000)+"");
-			op.add("Optimization.execTime", (r.nextDouble()*1000)+"");
+			op.add("Optimization.cost", (r.nextDouble()*10000)+"");
+			op.add("Optimization.execTime", (r.nextDouble()*100)+"");
 
 			op.add("Execution.Arguments.number", "1");
 			for(int j=0; j < inputs; j++){
