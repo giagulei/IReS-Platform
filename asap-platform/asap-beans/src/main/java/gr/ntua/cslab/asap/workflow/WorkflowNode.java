@@ -616,25 +616,25 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				}
 			}
 
-			//plan.add(temp.clone());
-			plan.add(temp);
+			plan.add(temp.clone());
+			//plan.add(temp);
 
 			int outN = 0;
 			List<String> tempPermits = new ArrayList<>();
 			WorkflowNode tempOutputNode = null;
 			Dataset tempOutput = null;
 
-			logger.info("Outputs are: " + outputs);
+			//logger.info("Outputs are: " + outputs);
 			for (WorkflowNode out : outputs) {
 				tempOutputNode = new WorkflowNode(false, false, "");
 				tempOutput = new Dataset("t" + materializedWorkflow.count);
-				logger.info("Created Output: t"+ materializedWorkflow.count);
+				//logger.info("Created Output: t"+ materializedWorkflow.count);
 				materializedWorkflow.count++;
-				logger.info("Call outputFor() for operator: " + op.opName);
-				logger.info("with tempOutput: " + tempOutput);
-				logger.info("outN: " + outN);
-				logger.info("nextMetrics: " + nextMetrics);
-				logger.info("temp.inputs: " + temp.inputs);
+//				logger.info("Call outputFor() for operator: " + op.opName);
+//				logger.info("with tempOutput: " + tempOutput);
+//				logger.info("outN: " + outN);
+//				logger.info("nextMetrics: " + nextMetrics);
+//				logger.info("temp.inputs: " + temp.inputs);
 				try {
 					op.outputFor(tempOutput, outN, nextMetrics, temp.inputs);
 				} catch (NullPointerException npe) {
@@ -650,18 +650,18 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				tempOutputNode.setDataset(tempOutput);
 				tempOutputNode.addInput(temp);
 				tempPermits.add(tempOutputNode.dataset.datasetName);
-				logger.info("out.getName(): " + out.getName() + " fromName: " + fromName);
-				logger.info("Op: "+op.opName +" Abst: "+op.getParameter("Constraints.OpSpecification.Algorithm.name"));
+//				logger.info("out.getName(): " + out.getName() + " fromName: " + fromName);
+//				logger.info("Op: "+op.opName +" Abst: "+op.getParameter("Constraints.OpSpecification.Algorithm.name"));
 
 				if (out.getName().equals(fromName)) {
 					ret.add(tempOutputNode);
 					plan.add(tempOutputNode);
 					//=============================
-					logger.info("RET: "+tempOutputNode.toStringNorecursive());
-					logger.info("ADDING NEW PLAN");
-					String planString = "";
-					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
-					logger.info(planString);
+//					logger.info("RET: "+tempOutputNode.toStringNorecursive());
+//					logger.info("ADDING NEW PLAN");
+//					String planString = "";
+//					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
+//					logger.info(planString);
 					//==============================
 					dpTable.addRecord(tempOutput, plan, optCost, bestInputMetrics);
 				} else {
@@ -669,10 +669,10 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					ArrayList<WorkflowNode> tp = new ArrayList<>();
 					tp.add(tempOutputNode);
 					//=============================
-					logger.info("ADDING NEW PLAN");
-					String planString = "";
-					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
-					logger.info(planString);
+//					logger.info("ADDING NEW PLAN");
+//					String planString = "";
+//					for(WorkflowNode w: plan) planString += w.toStringNorecursive()+" ";
+//					logger.info(planString);
 					//==============================
 					HashMap<String, Double> metrics = new HashMap<>();
 					for (String m : materializedWorkflow.groupInputs.keySet()) {
@@ -707,7 +707,14 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 							if(!opPathsToRoot.get(in.dataset.datasetName)
 									.get(op.getParameter("Constraints.OpSpecification.Algorithm.name"))
 									.equals(op.opName)){
+								// conflicting path
+								return null;
+							}
+						}
 
+						if(parentPointers.containsKey(op.getParameter("Constraints.OpSpecification.Algorithm.name"))){
+							if(!parentPointers.get(op.getParameter("Constraints.OpSpecification.Algorithm.name"))
+									.equals(op.opName)){
 								// conflicting path
 								return null;
 							}
@@ -716,8 +723,6 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 					}
 				}
 				parentPointers.put(op.getParameter("Constraints.OpSpecification.Algorithm.name"), op.opName);
-
-
 				opPathsToRoot.put(outputName, parentPointers);
 			}
 
@@ -733,14 +738,14 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 //			}
 
 			//===== PRINT ============
-			logger.info("Parent Dict:");
-			for(Entry<String, HashMap<String, String>> e : opPathsToRoot.entrySet()){
-				String row = e.getKey()+" --> ";
-				for(Entry<String, String> v : e.getValue().entrySet()){
-					row += "("+v.getKey()+","+v.getValue()+") ";
-				}
-				logger.info(row);
-			}
+//			logger.info("Parent Dict:");
+//			for(Entry<String, HashMap<String, String>> e : opPathsToRoot.entrySet()){
+//				String row = e.getKey()+" --> ";
+//				for(Entry<String, String> v : e.getValue().entrySet()){
+//					row += "("+v.getKey()+","+v.getValue()+") ";
+//				}
+//				logger.info(row);
+//			}
 
 
 
@@ -763,31 +768,34 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		}
 
 
-		logger.info("MATERINPUTS: "+materializedInputs);
+		//logger.info("MATERINPUTS: "+materializedInputs);
 
 		if(materializedInputs.get(currentInput).isEmpty()) return null;
 
+		boolean destroy = false;
 		for (WorkflowNode in : materializedInputs.get(currentInput)) {
 
-			logger.info("CHECKING INPUT DATASET: " + in.dataset.datasetName);
+			//logger.info("CHECKING INPUT DATASET: " + in.dataset.datasetName);
 
-			if(currentInput > 0 && selectedDatasets.size() > 0){
+			//if(currentInput > 0 && selectedDatasets.size() > 0){
+			destroy = false;
+			if(currentInput > 0){
 
-				logger.info("CheckMatch if dataset: "+in.dataset.datasetName+" matches with:");
-				String dsetsRow = "";
-				for(String sd: selectedDatasets){
-					dsetsRow += sd+" ";
-				}
-				logger.info(dsetsRow);
+				//logger.info("CheckMatch if dataset: "+in.dataset.datasetName+" matches with:");
+//				String dsetsRow = "";
+//				for(String sd: selectedDatasets){
+//					dsetsRow += sd+" ";
+//				}
+//				logger.info(dsetsRow);
 
 				boolean cont = false;
-
 				HashMap<String, String> lTest = opPathsToRoot.get(in.dataset.datasetName);
 				for(String sd: selectedDatasets){
 //					logger.info("Check "+in.dataset.datasetName+" with "+sd);
 					HashMap<String, String> lSelected = opPathsToRoot.get(sd);
 					if(!cmatch(lTest, lSelected)){
 						cont = true;
+						destroy = true;
 						logger.info("Doesnt match!");
 						break;
 					}
@@ -924,7 +932,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				newSelections.addAll(selectedDatasets);
 				newSelections.add(in.dataset.datasetName);
 				List<WorkflowNode> retPlan = iterateCandidateInputs(materializedWorkflow, op,
-						tempN, materializedInputs, dpTable,
+						tempN.clone(), materializedInputs, dpTable,
 						clonePlan(tplan), clonePlan(bestInputs), newMinCostsForInput,
 						currentInput + 1, totalInputs, fromName, newSelections);
 
@@ -937,7 +945,11 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				return null;
 			}
 		}
-		return ret;
+		if(destroy){
+			return null;
+		}else{
+			return ret;
+		}
 	}
 
 
