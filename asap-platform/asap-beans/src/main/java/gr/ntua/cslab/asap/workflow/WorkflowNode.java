@@ -698,12 +698,25 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 
 			for(String outputName: tempPermits){
 				HashMap<String, String> parentPointers = new HashMap<>();
-				parentPointers.put(op.getParameter("Constraints.OpSpecification.Algorithm.name"), op.opName);
 				for(WorkflowNode in : temp.inputs) {
 					if (opPathsToRoot.containsKey(in.dataset.datasetName)) {
+
+						if(opPathsToRoot.get(in.dataset.datasetName)
+								.containsKey(op.getParameter("Constraints.OpSpecification.Algorithm.name"))){
+
+							if(!opPathsToRoot.get(in.dataset.datasetName)
+									.get(op.getParameter("Constraints.OpSpecification.Algorithm.name"))
+									.equals(op.opName)){
+
+								// conflicting path
+								return null;
+							}
+						}
 						parentPointers.putAll(opPathsToRoot.get(in.dataset.datasetName));
 					}
 				}
+				parentPointers.put(op.getParameter("Constraints.OpSpecification.Algorithm.name"), op.opName);
+
 
 				opPathsToRoot.put(outputName, parentPointers);
 			}
