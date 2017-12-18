@@ -17,16 +17,7 @@
 
 package gr.ntua.cslab.asap.workflow;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.logging.Logger;
@@ -151,7 +142,7 @@ public class AbstractWorkflow1 {
 		}
 		long endExhaustive = System.currentTimeMillis();
 		logger.info("Exhaustive Time: "+(endExhaustive-startExhaustive)+" milliseconds.");
-		logger.info("PLANCOUNT = "+planCount+ "OPTIMAL EXEC TIME = "+minExecTime);
+		logger.info("PLANCOUNT = "+planCount+ " OPTIMAL EXEC TIME = "+minExecTime);
 		//=========================================================
 
 		if (optimizationFunctions.size() <= 1) {
@@ -178,7 +169,7 @@ public class AbstractWorkflow1 {
 			 * 				- MAX_PARETO_PLANS
 			 */
 
-		int NUM_GENERATIONS = 1000;
+		int NUM_GENERATIONS = 100;
 		int MAX_PARET0_PLANS = 100;
 
 		String fullName = name + "_" + nameExtention;
@@ -233,16 +224,23 @@ public class AbstractWorkflow1 {
 
 		for (int i = 0; i < result.size(); i++) {
 			Solution pareto = result.get(i);
-			int[] mapping = EncodingUtils.getInt(pareto);
-			logger.info("Pareto plan "+i);
-			for(Map.Entry<Integer, WorkflowNode> oper : operators.entrySet()){
-				Operator op = NSGAIIPlanning.materializedOperators.get(mapping[oper.getKey()]);
-				logger.info(op.getEngine()+" selected for "+operators.get(oper.getKey()).getName());
+
+			logger.info("Result solution: "+pareto.toString());
+
+//			int[] mapping = EncodingUtils.getInt(pareto);
+//			logger.info("Pareto plan "+i);
+//			for(Map.Entry<Integer, WorkflowNode> oper : operators.entrySet()){
+//				Operator op = NSGAIIPlanning.materializedOperators.get(mapping[oper.getKey()]);
+//				logger.info(op.getEngine()+" selected for "+operators.get(oper.getKey()).getName());
+//			}
+
+
+			logger.info("Plan Cost:");
+			for (Entry<String, Double> e : NSGAIIPlanning.solutionMap.get(pareto.toString())
+					.optimalCosts.entrySet()) {
+				logger.info(e.getKey() + ": " + e.getValue());
 			}
-			logger.info("Final Plan Cost:");
-			for(Entry<String, Double> e : NSGAIIPlanning.solutionMap.get(pareto).optimalCosts.entrySet()){
-				logger.info(e.getKey()+": "+e.getValue());
-			}
+
 		}
 		logger.info("END PARETO");
 		//=============================================================================================

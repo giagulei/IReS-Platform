@@ -8,6 +8,7 @@ import org.moeaframework.core.Solution;
 import org.moeaframework.problem.AbstractProblem;
 import org.moeaframework.core.variable.EncodingUtils;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -24,7 +25,17 @@ public class NSGAIIPlanning extends AbstractProblem {
     public static HashMap<String, Integer> objectives;
     public static HashMap<String, Double> costMetrics;
 
-    public static HashMap<Solution, MaterializedWorkflow1> solutionMap;
+    public static HashMap<String, MaterializedWorkflow1> solutionMap;
+
+//    public static String solutionIndex(Solution pareto){
+//        String index = "";
+//        for(Map.Entry<String, Serializable> e: pareto.getAttributes().entrySet()){
+//            index += e.getValue().toString();
+//        }
+//
+//        for(Double d : pareto.getConstraints()) index += d.toString();
+//        return index;
+//    }
 
     //TODO:
     //public static HashMap<String, String> optimizationFunctions;
@@ -159,7 +170,8 @@ public class NSGAIIPlanning extends AbstractProblem {
             solution.setObjective(objectives.get(objScore.getKey()), costMetrics.get(objScore.getKey()));
         }
 
-        solutionMap.put(solution, materialization);
+        solutionMap.put(solution.toString(), materialization.clone());
+        logger.info("tested solution: "+solution.toString());
     }
 
 

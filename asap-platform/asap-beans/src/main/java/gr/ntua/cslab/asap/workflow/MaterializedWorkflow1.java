@@ -83,6 +83,13 @@ public class MaterializedWorkflow1 {
 		optimizationMetrics = new HashMap<>();
 	}
 
+//	public MaterializedWorkflow1 clone(){
+//		MaterializedWorkflow1 newWorkflow = new MaterializedWorkflow1(name, directory);
+//		newWorkflow.optimalCosts = new HashMap<>();
+//		newWorkflow.optimalCosts.putAll(optimalCosts);
+//		return newWorkflow;
+//	}
+
 	public AbstractWorkflow1 getAbstractWorkflow() {
 		return abstractWorkflow;
 	}
