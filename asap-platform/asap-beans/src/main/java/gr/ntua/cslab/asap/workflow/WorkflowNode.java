@@ -708,6 +708,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 									.get(op.getParameter("Constraints.OpSpecification.Algorithm.name"))
 									.equals(op.opName)){
 								// conflicting path
+								logger.info("CONFLICT1");
 								return null;
 							}
 						}
@@ -716,6 +717,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 							if(!parentPointers.get(op.getParameter("Constraints.OpSpecification.Algorithm.name"))
 									.equals(op.opName)){
 								// conflicting path
+								logger.info("CONFLICT2");
 								return null;
 							}
 						}
@@ -771,7 +773,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 		//logger.info("MATERINPUTS: "+materializedInputs);
 
 		if(materializedInputs.get(currentInput).isEmpty()) return null;
-
+		boolean hasMatched = false;
 		boolean destroy = false;
 		for (WorkflowNode in : materializedInputs.get(currentInput)) {
 
@@ -803,7 +805,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 
 				if(cont) continue;
 			}
-
+			hasMatched = true;
 			//=============
 			Dataset tempInput = new Dataset("t" + materializedWorkflow.count);
 			materializedWorkflow.count++;
@@ -945,7 +947,7 @@ public class WorkflowNode implements Comparable<WorkflowNode>{
 				return null;
 			}
 		}
-		if(destroy){
+		if(destroy && !hasMatched){
 			return null;
 		}else{
 			return ret;
