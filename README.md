@@ -1,7 +1,7 @@
 # IReS-Platform
 Intelligent, Multi-Engine Resource Scheduler for Big
 Data Analytics Workflows
-
+l
 <h2>Links</h2>
 <ul>
 <li><a href="http://www.cslab.ntua.gr/~dtsouma/index_files/modde764.pdf">IReS Paper</a> </li>
